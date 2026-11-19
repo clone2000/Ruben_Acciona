@@ -8,5 +8,15 @@
     "coste_usd": 0.6954,
     "tokens": 191034,
     "codigo": 0
+  },
+  {
+    "fecha": "19/11/2026 21:04:04",
+    "motor": "claude",
+    "modelo": "claude-opus-5-5",
+    "tarea": "hay algunos trabajadores que tienen descansos fiujos añadamelos",
+    "respuesta": "\n🔧 Bash  ls && git status --short && head -c 600 historial.json; echo; grep -n \"offset\\|diaDescanso...\n\n🔧 Read  E:\\Ruben_Acciona\\gestion_descansos.html\nAhora hago los cambios: lógica, tipo nuevo «F», contadores y pantalla de trabajadores.\n🔧 Bash  python - <<'EOF'\nimport io\np=\"gestion_descansos.html\"\ns=io.open(p,encoding=\"utf-8\").read()...\nCompruebo sintaxis y lógica:\n🔧 Bash  node -e '\nconst fs=require(\"fs\");const h=fs.readFileSync(\"gestion_descansos.html\",\"utf8\");...\nYa puedes elegir, trabajador por trabajador, si su descanso semanal es **rotativo** (como hasta ahora) o **fijo** en el día o días que tú digas. He comprobado que el programa no da errores y he simulado noviembre: un trabajador con fijo lunes y jueves sale con descanso todos los lunes y jueves (9 días) más los 5 domingos, y el rotativo sigue igual que antes. No lo he probado haciendo clics en el navegador.\n\nNo me has dicho qué trabajadores tienen descanso fijo ni en qué días, así que eso tienes que ponerlo tú:\n\n1. Abre `gestion_descansos.html` y ve a la pestaña **«Trabajadores y ajustes»**.\n2. En la columna **«Tipo de descanso semanal»**, cambia ese trabajador de «Rotativo» a **«Fijo»**.\n3. Marca sus días de descanso (L, M, X, J, V, S). Puedes marcar uno o varios, y tiene que quedar al menos uno marcado. Al pasar a «Fijo» se marca de entrada el día que le tocaba esta semana.\n\n**Qué cambia en el cuadrante:**\n- Los descansos fijos salen con la letra **F** en color verde azulado, distinto del descanso rotativo (**S**).\n- El domingo sigue siendo descanso para todos.\n- Hay una columna nueva **F** con los descansos fijos del mes, y también sale en el Excel.\n- Si un día de descanso fijo le toca trabajar, se marca con «T», igual que con el rotativo.\n- Al añadir un trabajador nuevo, su descanso rotativo se pone en el día que tenga menos gente descansando, contando también a los que tienen descanso fijo.\n- Volviendo a «Rotativo», el trabajador sigue con la rotación de antes.\n\nSi me dices los nombres y los días de cada uno, te los dejo puestos yo. Para eso necesito que ya estén dados de alta, o que me pases la lista completa de trabajadores.",
+    "coste_usd": 0.9572,
+    "tokens": 299146,
+    "codigo": 0
   }
 ]
