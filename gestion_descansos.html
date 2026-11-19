@@ -224,12 +224,17 @@
 
     <div class="card">
       <h3 style="margin-top:0">Archivo de datos</h3>
-      <p class="hint">Todos los datos se guardan automáticamente en un archivo <b>datos_descansos.json</b> que debe estar
+      <p class="hint" id="almacenLocalTxt">Todos los datos se guardan automáticamente en un archivo <b>datos_descansos.json</b> que debe estar
         <b>en la misma carpeta que este programa</b>. Para llevarlo a otro ordenador, copia la carpeta entera (el .html y el .json).</p>
       <p id="fileInfo"></p>
-      <div class="row" style="margin-bottom:16px">
+      <div class="row" style="margin-bottom:16px" id="localBtns">
         <button class="btn" id="fileOpenBtn">Abrir archivo de datos existente</button>
         <button class="btn" id="fileNewBtn">Crear archivo de datos nuevo</button>
+      </div>
+      <div class="row hidden" style="margin-bottom:16px" id="ghBtns">
+        <button class="btn" id="ghReloadBtn">Recargar datos desde GitHub</button>
+        <button class="btn" id="ghTokenBtn">Cambiar la clave de GitHub</button>
+        <button class="btn danger" id="ghForgetBtn">Olvidar la clave en este ordenador</button>
       </div>
       <h3>Copia de seguridad</h3>
       <p class="hint">Además del archivo de datos, puedes guardar copias con fecha por si algo sale mal.</p>
@@ -789,9 +794,17 @@ function estadoArchivo(tipo, texto) {
   el.className = "file-status no-print " + tipo;
   document.getElementById("fileStatusTxt").textContent = texto;
   const info = document.getElementById("fileInfo");
-  if (info) info.innerHTML = archivo
-    ? `Archivo conectado: <b>${esc(archivo.name)}</b>`
-    : `<span class="over">No hay ningún archivo de datos conectado.</span>`;
+  if (!info) return;
+  if (gh) {
+    info.innerHTML = `Los datos se guardan en GitHub, en el archivo <b>${esc(gh.path)}</b> del repositorio
+      <b>${esc(gh.owner)}/${esc(gh.repo)}</b> (junto al programa). ` +
+      (ghToken ? "Clave de GitHub: <b>configurada en este ordenador</b>."
+               : `<span class="over">Falta la clave de GitHub: los cambios no se guardan.</span>`);
+  } else {
+    info.innerHTML = archivo
+      ? `Archivo conectado: <b>${esc(archivo.name)}</b>`
+      : `<span class="over">No hay ningún archivo de datos conectado.</span>`;
+  }
 }
 
 function mostrarAviso(html) {
@@ -801,6 +814,7 @@ function mostrarAviso(html) {
   b.classList.remove("hidden");
   b.querySelectorAll("[data-acc]").forEach(btn => btn.onclick = () => ({
     abrir: abrirArchivo, crear: crearArchivo, reconectar: reconectarArchivo,
+    guardarClave: ghGuardarClave, reintentarGH: ghReintentar,
   })[btn.dataset.acc]());
 }
 
@@ -904,6 +918,7 @@ async function iniciarArchivo() {
 }
 
 function programarEscritura() {
+  if (gh) { programarGitHub(); return; }
   if (!archivo) return;
   estadoArchivo("", "Guardando…");
   clearTimeout(escrituraPendiente);
@@ -936,6 +951,237 @@ function escribirAhora() {
 window.addEventListener("beforeunload", e => {
   if (escrituraPendiente) { clearTimeout(escrituraPendiente); escrituraPendiente = null; escribirAhora(); e.preventDefault(); e.returnValue = ""; }
 });
+
+/* ===================== GUARDADO EN GITHUB ===================== */
+/* Cuando el programa se abre desde GitHub Pages (usuario.github.io/repositorio/...),
+   los datos se leen y se guardan en datos_descansos.json DENTRO del repositorio,
+   junto al HTML, usando la API de GitHub. Para escribir hace falta una clave
+   (token) con permiso «Contents: Read and write», que se guarda solo en este navegador. */
+function detectarGitHub() {
+  const host = location.hostname.toLowerCase();
+  if (!host.endsWith(".github.io")) return null;
+  const owner = host.slice(0, -".github.io".length);
+  const partes = location.pathname.split("/").filter(Boolean).map(decodeURIComponent);
+  if (partes.length && /\.html?$/i.test(partes[partes.length - 1])) partes.pop();
+  // Sitio de proyecto: usuario.github.io/<repositorio>/...
+  const repo = partes.length ? partes[0] : host;
+  return { owner, repo, path: [...partes.slice(1), NOMBRE_ARCHIVO].join("/") };
+}
+
+const GH_TOKEN_KEY = "gestion_descansos_github_token";
+const gh = detectarGitHub();
+let ghToken = localStorage.getItem(GH_TOKEN_KEY) || "";
+let ghSha = null;        // versión del archivo de GitHub sobre la que trabajamos
+let ghListo = false;     // ya se han leído los datos de GitHub
+let ghSucio = false;     // hay cambios sin guardar en GitHub
+let ghPendiente = null;  // temporizador de guardado
+let ghCola = Promise.resolve();
+
+const ghRepoUrl = () => `https://api.github.com/repos/${encodeURIComponent(gh.owner)}/${encodeURIComponent(gh.repo)}`;
+const ghUrl = () => `${ghRepoUrl()}/contents/${gh.path.split("/").map(encodeURIComponent).join("/")}`;
+function ghCabeceras(token = ghToken) {
+  const h = { Accept: "application/vnd.github+json", "X-GitHub-Api-Version": "2022-11-28" };
+  if (token) h.Authorization = "Bearer " + token;
+  return h;
+}
+const b64aTexto = b64 => new TextDecoder().decode(Uint8Array.from(atob(b64.replace(/\s/g, "")), c => c.charCodeAt(0)));
+function textoAb64(txt) {
+  const bytes = new TextEncoder().encode(txt);
+  let bin = "";
+  for (let i = 0; i < bytes.length; i += 0x8000) bin += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
+  return btoa(bin);
+}
+
+/** Lee datos_descansos.json del repositorio. Devuelve { sha, texto } o null si no existe. */
+async function ghLeer() {
+  const r = await fetch(ghUrl(), { headers: ghCabeceras(), cache: "no-store" });
+  if (r.status === 404) return null;
+  if (r.status === 401) throw Object.assign(new Error("Clave de GitHub no válida"), { code: 401 });
+  if (!r.ok) throw new Error(`GitHub respondió con el código ${r.status}`);
+  const j = await r.json();
+  return { sha: j.sha, texto: b64aTexto(j.content || "") };
+}
+
+function ghAplicarRemoto(remoto) {
+  ghSha = remoto ? remoto.sha : null;
+  if (remoto && remoto.texto.trim()) {
+    state = normalizar(JSON.parse(remoto.texto));
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+    renderTodo(); renderLegend();
+  }
+  ghSucio = false;
+}
+
+async function ghCargar() {
+  estadoArchivo("", "Leyendo datos de GitHub…");
+  try {
+    const remoto = await ghLeer();
+    if (!remoto && !ghToken) {
+      // Sin clave no se distingue "no existe" de "repositorio privado": se pide la clave antes de nada
+      ghListo = false;
+      avisoSinClave();
+      return;
+    }
+    ghAplicarRemoto(remoto);
+    ghListo = true;
+    if (!ghToken) { avisoSinClave(); return; }
+    mostrarAviso(null);
+    estadoArchivo("ok", "Conectado con GitHub");
+  } catch (e) {
+    console.error(e);
+    ghListo = false;
+    if (e.code === 401) { avisoSinClave("La clave de GitHub no es válida o ha caducado."); return; }
+    estadoArchivo("err", "Sin conexión con GitHub");
+    mostrarAviso(`<h3>⚠ No se han podido leer los datos de GitHub</h3>
+      <p style="margin:0 0 10px">${esc(e.message)}. Comprueba la conexión a Internet. Se muestra la última copia guardada en este
+      navegador y los cambios <b>no</b> se guardarán en GitHub hasta que vuelva la conexión.</p>
+      <div class="row"><button class="btn primary" data-acc="reintentarGH">Reintentar</button></div>`);
+  }
+}
+
+function ayudaClave() {
+  return `<details style="margin-top:10px"><summary style="cursor:pointer"><b>¿Cómo consigo la clave?</b> (solo una vez)</summary>
+    <ol style="margin:6px 0">
+      <li>Entra en GitHub con la cuenta dueña del repositorio y abre
+        <a href="https://github.com/settings/personal-access-tokens/new" target="_blank" rel="noopener">esta página para crear una clave</a>.</li>
+      <li>Ponle un nombre (por ejemplo «Descansos») y una fecha de caducidad.</li>
+      <li>En <b>Repository access</b> elige <b>Only select repositories</b> y marca <b>${esc(gh.repo)}</b>.</li>
+      <li>En <b>Permissions → Repository permissions → Contents</b> elige <b>Read and write</b>.</li>
+      <li>Pulsa <b>Generate token</b>, copia la clave (empieza por <code>github_pat_</code>) y pégala arriba.</li>
+    </ol>
+    La clave se guarda solo en este navegador; no se sube a GitHub. No la compartas con nadie.</details>`;
+}
+
+function avisoSinClave(msg) {
+  estadoArchivo("err", "Sin clave de GitHub: no se guarda");
+  mostrarAviso(`<h3>${msg ? "⚠ " + esc(msg) : "Falta la clave de GitHub para poder guardar"}</h3>
+    <p style="margin:0 0 10px">El programa está en GitHub y guarda los datos en el archivo <b>${esc(gh.path)}</b> del repositorio,
+    junto al programa. Para poder guardar cambios hace falta una clave de acceso de GitHub
+    (se pone una sola vez en cada ordenador). Sin ella puedes ver los datos, pero los cambios no se guardan.</p>
+    <div class="row">
+      <input type="password" id="ghTokenInput" placeholder="Pega aquí la clave (github_pat_...)" style="min-width:340px" autocomplete="off">
+      <button class="btn primary" data-acc="guardarClave">Guardar clave</button>
+    </div>${ayudaClave()}`);
+  const inp = document.getElementById("ghTokenInput");
+  inp.onkeydown = e => { if (e.key === "Enter") ghGuardarClave(); };
+}
+
+async function ghGuardarClave() {
+  const t = (document.getElementById("ghTokenInput")?.value || "").trim();
+  if (!t) { toast("Pega la clave primero"); return; }
+  try {
+    const r = await fetch(ghRepoUrl(), { headers: ghCabeceras(t), cache: "no-store" });
+    if (r.status === 401) { toast("La clave no es válida"); return; }
+    if (!r.ok) { toast(`Con esa clave no se puede acceder al repositorio (código ${r.status})`); return; }
+  } catch (e) { toast("No hay conexión con GitHub"); return; }
+  ghToken = t;
+  localStorage.setItem(GH_TOKEN_KEY, t);
+  toast("Clave guardada");
+  mostrarAviso(null);
+  // Si se hicieron cambios antes de poner la clave, se compara con lo que hay en GitHub y se pregunta
+  if (ghListo && ghSucio) { await ghConflicto(); return; }
+  await ghCargar();
+}
+
+function ghReintentar() {
+  mostrarAviso(null);
+  if (!ghListo) ghCargar(); else { ghSucio = true; ghEscribirYa(); }
+}
+
+function errorGH(msg) {
+  estadoArchivo("err", "¡Error al guardar en GitHub!");
+  mostrarAviso(`<h3>⚠ No se han podido guardar los cambios en GitHub</h3>
+    <p style="margin:0 0 10px">${esc(msg)} Los cambios siguen guardados en este navegador.</p>
+    <div class="row"><button class="btn primary" data-acc="reintentarGH">Reintentar</button></div>`);
+}
+
+function programarGitHub() {
+  ghSucio = true;
+  if (!ghListo || !ghToken) { estadoArchivo("err", "Cambios sin guardar en GitHub"); return; }
+  estadoArchivo("", "Guardando en GitHub…");
+  clearTimeout(ghPendiente);
+  ghPendiente = setTimeout(() => { ghPendiente = null; ghEscribirYa(); }, 2500);
+}
+
+function ghEscribirYa() {
+  ghCola = ghCola.then(() => ghPut(false));
+  return ghCola;
+}
+
+async function ghPut(reintento) {
+  if (!ghSucio || !ghToken || !ghListo) return;
+  ghSucio = false;
+  const ahora = new Date();
+  const datos = JSON.stringify(state, null, 2);
+  const body = { message: `Actualizar datos de descansos (${ahora.toLocaleString("es-ES")})`, content: textoAb64(datos) };
+  if (ghSha) body.sha = ghSha;
+  const cuerpo = JSON.stringify(body);
+  let r;
+  try {
+    r = await fetch(ghUrl(), {
+      method: "PUT", headers: { ...ghCabeceras(), "Content-Type": "application/json" },
+      body: cuerpo, keepalive: cuerpo.length < 60000,   // permite terminar aunque se cierre la página
+    });
+  } catch (e) {
+    ghSucio = true;
+    errorGH("No hay conexión con GitHub.");
+    return;
+  }
+  if (r.ok) {
+    ghSha = (await r.json()).content.sha;
+    estadoArchivo("ok", `Guardado en GitHub (${pad(ahora.getHours())}:${pad(ahora.getMinutes())})`);
+    return;
+  }
+  ghSucio = true;
+  if (r.status === 401) { avisoSinClave("La clave de GitHub no es válida o ha caducado."); return; }
+  if (r.status === 403 || r.status === 404) {
+    avisoSinClave("La clave de GitHub no tiene permiso para guardar en este repositorio (necesita «Contents: Read and write»).");
+    return;
+  }
+  if ((r.status === 409 || r.status === 422) && !reintento) { await ghConflicto(); return; }
+  errorGH(`GitHub respondió con el código ${r.status}.`);
+}
+
+/** El archivo de GitHub ha cambiado desde que lo cargamos (p. ej. desde otro ordenador) */
+async function ghConflicto() {
+  let remoto;
+  try { remoto = await ghLeer(); }
+  catch (e) { errorGH("No se ha podido comprobar la versión guardada en GitHub."); return; }
+  if (!remoto) { ghSha = null; ghSucio = true; await ghPut(true); return; }   // aún no existe: se crea
+  const mios = confirm("Los datos guardados en GitHub han cambiado desde que abriste el programa " +
+    "(puede que alguien los haya modificado desde otro ordenador).\n\n" +
+    "Aceptar: guardar TUS datos encima de los de GitHub.\n" +
+    "Cancelar: descartar tus últimos cambios y cargar los de GitHub.");
+  if (mios) {
+    ghSha = remoto ? remoto.sha : null;
+    ghSucio = true;
+    await ghPut(true);
+  } else {
+    ghAplicarRemoto(remoto);
+    estadoArchivo("ok", "Datos de GitHub cargados");
+  }
+}
+
+function iniciarGitHub() {
+  document.getElementById("almacenLocalTxt").classList.add("hidden");
+  document.getElementById("localBtns").classList.add("hidden");
+  document.getElementById("ghBtns").classList.remove("hidden");
+  document.getElementById("ghReloadBtn").onclick = () => {
+    if (ghSucio && !confirm("Hay cambios sin guardar en GitHub que se perderán. ¿Recargar igualmente?")) return;
+    ghCargar();
+  };
+  document.getElementById("ghTokenBtn").onclick = () => { avisoSinClave(); window.scrollTo(0, 0); };
+  document.getElementById("ghForgetBtn").onclick = () => {
+    if (!confirm("¿Borrar la clave de GitHub de este ordenador? Después no se podrán guardar cambios hasta volver a ponerla.")) return;
+    ghToken = ""; localStorage.removeItem(GH_TOKEN_KEY);
+    avisoSinClave(); window.scrollTo(0, 0);
+  };
+  window.addEventListener("beforeunload", e => {
+    if (ghPendiente) { clearTimeout(ghPendiente); ghPendiente = null; ghEscribirYa(); }
+    if (ghSucio || ghPendiente) { e.preventDefault(); e.returnValue = ""; }
+  });
+  ghCargar();
+}
 
 /* ===================== VARIOS ===================== */
 function esc(s) {
@@ -1000,7 +1246,7 @@ window.addEventListener("afterprint", () => document.getElementById("printTitle"
 renderBrushes();
 renderLegend();
 renderMensual();
-iniciarArchivo();
+if (gh) iniciarGitHub(); else iniciarArchivo();
 </script>
 </body>
 </html>
