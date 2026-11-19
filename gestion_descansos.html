@@ -8,14 +8,14 @@
   :root {
     --bg: #f4f6f9; --card: #fff; --line: #d9dee6; --text: #1f2933; --muted: #6b7785;
     --primary: #1d5fbf;
-    --c-D: #9aa5b1;  /* Domingo */
-    --c-S: #3b82f6;  /* Descanso semanal */
+    --c-D: #dc2626;  /* Domingo: rojo */
+    --c-S: #2563eb;  /* Descanso semanal rotativo: azul */
     --c-V: #16a34a;  /* Vacaciones */
-    --c-AP: #f59e0b; /* Asunto propio */
-    --c-DX: #8b5cf6; /* Descanso extra */
+    --c-AP: #f97316; /* Asunto propio: naranja */
+    --c-DX: #60a5fa; /* Descanso extra: azul claro */
     --c-T: #e5e7eb;  /* Trabaja (anula descanso) */
-    --c-F: #0d9488;  /* Descanso fijo */
-    --c-FE: #dc2626; /* Festivo */
+    --c-F: #1e3a8a;  /* Descanso fijo: azul oscuro */
+    --c-FE: #facc15; /* Festivo: amarillo */
   }
   * { box-sizing: border-box; }
   body { margin: 0; font-family: "Segoe UI", Arial, sans-serif; background: var(--bg); color: var(--text); font-size: 14px; }
@@ -54,18 +54,18 @@
   table.cal th.name { background: #f8fafc; }
   table.cal th.day { width: 30px; min-width: 30px; padding: 3px 0; }
   table.cal th.day .dw { display: block; font-size: 10px; color: var(--muted); font-weight: 400; }
-  table.cal th.sun { background: #eceff3; }
+  table.cal th.sun { background: #fecaca; color: #991b1b; }
   table.cal th.day { cursor: pointer; }
-  table.cal th.day:hover { background: #fde8e8; }
-  table.cal th.fest { background: #fecaca; color: #991b1b; }
-  table.cal td.cell.festcol:not(.FE) { box-shadow: inset 0 0 0 2px #fca5a5; }
+  table.cal th.day:hover { background: #fef9c3; }
+  table.cal th.fest { background: #fde047; color: #713f12; }
+  table.cal td.cell.festcol:not(.FE) { box-shadow: inset 0 0 0 3px #facc15; }
   table.cal th.today { outline: 2px solid var(--primary); outline-offset: -2px; }
   table.cal td.cell { width: 30px; height: 28px; cursor: pointer; font-size: 10px; font-weight: 700; color: #fff; }
   table.cal td.cell:hover { outline: 2px solid #111; outline-offset: -2px; }
   td.cell.D { background: var(--c-D); }
   td.cell.S { background: var(--c-S); }
   td.cell.F { background: var(--c-F); }
-  td.cell.FE { background: var(--c-FE); }
+  td.cell.FE { background: var(--c-FE); color: #713f12; }
   td.cell.V { background: var(--c-V); }
   td.cell.AP { background: var(--c-AP); }
   td.cell.DX { background: var(--c-DX); }
@@ -93,7 +93,7 @@
     body { background: #fff; font-size: 11px; }
     main { padding: 0; }
     .card { border: 0; padding: 0; }
-    td.cell, .sw, .pill, th.fest { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    td.cell, .sw, .pill, th.fest, th.sun { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
     @page { size: landscape; margin: 10mm; }
   }
 </style>
@@ -245,6 +245,8 @@ const TIPOS = {
   DX: { nombre: "Descanso extra",     corto: "DX", color: "var(--c-DX)" },
   T:  { nombre: "Trabaja (anula descanso)", corto: "T", color: "var(--c-T)" },
 };
+/** Color del texto de las muestras de la leyenda (oscuro sobre fondos claros) */
+const colorTexto = k => k === "T" ? "color:#6b7785" : k === "FE" ? "color:#713f12" : "";
 const PINCELES = ["V", "AP", "DX", "T"];
 
 /* ===================== ESTADO ===================== */
@@ -408,14 +410,14 @@ function renderBrushes() {
   const cont = document.getElementById("brushes");
   cont.innerHTML = PINCELES.map(p => `
     <div class="brush ${p === pincel ? "active" : ""}" data-p="${p}">
-      <span class="sw" style="background:${TIPOS[p].color};${p === "T" ? "color:#6b7785" : ""}">${TIPOS[p].corto}</span>${TIPOS[p].nombre}
+      <span class="sw" style="background:${TIPOS[p].color};${colorTexto(p)}">${TIPOS[p].corto}</span>${TIPOS[p].nombre}
     </div>`).join("");
   cont.querySelectorAll(".brush").forEach(el => el.onclick = () => { pincel = el.dataset.p; renderBrushes(); });
 }
 
 function renderLegend() {
   document.getElementById("legend").innerHTML = Object.entries(TIPOS).map(([k, t]) =>
-    `<span class="row" style="gap:4px"><span class="sw" style="background:${t.color};${k === "T" ? "color:#6b7785" : ""}">${t.corto}</span>${t.nombre}</span>`
+    `<span class="row" style="gap:4px"><span class="sw" style="background:${t.color};${colorTexto(k)}">${t.corto}</span>${t.nombre}</span>`
   ).join("") + `<span class="hint">· Columnas: Trab = días trabajados, D = domingos, S = descanso semanal rotativo, F = descanso fijo, FE = festivos descansados, FT = festivos trabajados, DX = descanso extra, V = vacaciones, AP mes / AP año</span>`;
 }
 
