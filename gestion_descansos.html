@@ -133,7 +133,7 @@
         Clic derecho sobre un día lo deja como estaba (automático).
         <b>Festivos:</b> haz clic en el número del día (cabecera) para marcarlo o desmarcarlo como festivo.
         Los domingos y el descanso semanal correlativo se calculan solos. Si alguien <b>trabaja un domingo o un festivo</b>,
-        márcalo con «Trabaja»: se le suma un <b>día extra</b> que se le debe (columna «Extra» y pestaña «Resumen anual»).
+        márcalo con «Trabaja»: se le suman <b>2 días extra de librar</b> (configurable en «Trabajadores y ajustes») (columna «Extra» y pestaña «Resumen anual»).
       </div>
     </div>
 
@@ -160,7 +160,7 @@
       <div class="table-wrap"><table class="grid" id="yearTable"></table></div>
       <p class="hint">En cada mes: <span class="pill" style="background:var(--c-V)">V</span> días de vacaciones ·
         <span class="pill" style="background:var(--c-AP)">AP</span> asuntos propios. Los números en rojo superan lo permitido.
-        Los «días extra» son los domingos y festivos trabajados (si un domingo es además festivo, cuenta como un solo día).</p>
+        Los «días extra» son los días de librar que se le deben: cada domingo o festivo trabajado suma 2 (configurable). Si un domingo es además festivo, se cuenta una sola vez.</p>
     </div>
     <div class="card">
       <h3 style="margin-top:0">Detalle de asuntos propios (fechas)</h3>
@@ -189,6 +189,8 @@
           <input type="number" id="cfgV" min="0" max="99" style="width:70px"></label>
         <label>Avisar si trabajan menos de
           <input type="number" id="cfgMin" min="0" max="999" style="width:70px"> personas un día</label>
+        <label>Días extra de librar por cada domingo o festivo trabajado:
+          <input type="number" id="cfgExtra" min="0" max="9" style="width:70px"></label>
       </div>
       <p class="hint">Los días de vacaciones se cuentan tal y como se marcan en el cuadrante (incluidos domingos si se marcan).</p>
     </div>
@@ -256,7 +258,7 @@ let anioResumen = hoy.getFullYear();
 let pincel = "V";
 
 function estadoInicial() {
-  return { workers: [], marks: {}, festivos: {}, config: { apAnual: 2, vacAnual: 30, minCobertura: 0, festivoDescanso: true }, nextId: 1 };
+  return { workers: [], marks: {}, festivos: {}, config: { apAnual: 2, vacAnual: 30, minCobertura: 0, festivoDescanso: true, extraPorDia: 2 }, nextId: 1 };
 }
 function cargar() {
   try {
@@ -338,7 +340,8 @@ const trabaja = tipo => tipo === null || tipo === "T";
 /* ===================== CONTADORES ===================== */
 function totalesMes(worker, y, m) {
   // DT = domingos trabajados, FT = festivos trabajados,
-  // extra = días que se le deben (un domingo que además es festivo cuenta como 1)
+  // extra = días de librar que se le deben: cada domingo/festivo trabajado suma config.extraPorDia
+  // (un domingo que además es festivo se cuenta una sola vez)
   const t = { trab: 0, D: 0, S: 0, F: 0, FE: 0, FT: 0, DT: 0, extra: 0, V: 0, AP: 0 };
   const n = diasEnMes(y, m);
   for (let d = 1; d <= n; d++) {
@@ -348,7 +351,7 @@ function totalesMes(worker, y, m) {
       const dom = infoDia(y, m, d).dow === 6, fest = esFestivo(y, m, d);
       if (dom) t.DT++;
       if (fest) t.FT++;
-      if (dom || fest) t.extra++;
+      if (dom || fest) t.extra += state.config.extraPorDia;
     }
     else t[tipo]++;
   }
@@ -425,7 +428,7 @@ function renderBrushes() {
 function renderLegend() {
   document.getElementById("legend").innerHTML = Object.entries(TIPOS).map(([k, t]) =>
     `<span class="row" style="gap:4px"><span class="sw" style="background:${t.color};${colorTexto(k)}">${t.corto}</span>${t.nombre}</span>`
-  ).join("") + `<span class="hint">· Columnas: Trab = días trabajados, D = domingos, S = descanso semanal rotativo, F = descanso fijo, FE = festivos descansados, FT = festivos trabajados, DT = domingos trabajados, Extra = días que se le deben por domingos y festivos trabajados (del mes y del año), V = vacaciones, AP mes / AP año</span>`;
+  ).join("") + `<span class="hint">· Columnas: Trab = días trabajados, D = domingos, S = descanso semanal rotativo, F = descanso fijo, FE = festivos descansados, FT = festivos trabajados, DT = domingos trabajados, Extra = días de librar que se le deben (cada domingo o festivo trabajado suma ${state.config.extraPorDia}; del mes y del año), V = vacaciones, AP mes / AP año</span>`;
 }
 
 function renderMensual() {
@@ -449,7 +452,7 @@ function renderMensual() {
     const tit = fn !== undefined ? `Festivo${fn ? ": " + esc(fn) : ""} (clic para quitar)` : "Clic para marcar como festivo";
     h += `<th class="day ${dow === 6 ? "sun" : ""} ${fn !== undefined ? "fest" : ""} ${esHoy(d) ? "today" : ""}" data-fest="${d}" title="${tit}">${d}<span class="dw">${fn !== undefined ? "FEST" : DIAS_CORTOS[dow]}</span></th>`;
   }
-  h += `<th class="tot">Trab</th><th class="tot">D</th><th class="tot">S</th><th class="tot">F</th><th class="tot" title="Festivos descansados">FE</th><th class="tot" title="Festivos trabajados">FT</th><th class="tot" title="Domingos trabajados">DT</th><th class="tot" title="Días extra que se le deben este mes (domingos + festivos trabajados)">Extra</th><th class="tot" title="Días extra que se le deben en el año">Extra año</th><th class="tot">V</th><th class="tot">AP mes</th><th class="tot">AP año</th></tr></thead><tbody>`;
+  h += `<th class="tot">Trab</th><th class="tot">D</th><th class="tot">S</th><th class="tot">F</th><th class="tot" title="Festivos descansados">FE</th><th class="tot" title="Festivos trabajados">FT</th><th class="tot" title="Domingos trabajados">DT</th><th class="tot" title="Días de librar que se le deben este mes (cada domingo o festivo trabajado suma ${state.config.extraPorDia})">Extra</th><th class="tot" title="Días extra que se le deben en el año">Extra año</th><th class="tot">V</th><th class="tot">AP mes</th><th class="tot">AP año</th></tr></thead><tbody>`;
 
   const cobertura = new Array(n + 1).fill(0);
   for (const w of state.workers) {
@@ -776,14 +779,14 @@ document.getElementById("newName").addEventListener("keydown", e => { if (e.key 
 document.getElementById("exportJson").onclick = exportarJSON;
 document.getElementById("importJson").onchange = e => { if (e.target.files[0]) importarJSON(e.target.files[0]); e.target.value = ""; };
 
-const cfg = [["cfgAP", "apAnual"], ["cfgV", "vacAnual"], ["cfgMin", "minCobertura"]];
+const cfg = [["cfgAP", "apAnual"], ["cfgV", "vacAnual"], ["cfgMin", "minCobertura"], ["cfgExtra", "extraPorDia"]];
 function cargarConfigUI() {
   for (const [id, key] of cfg) document.getElementById(id).value = state.config[key];
   document.getElementById("cfgFestDesc").checked = !!state.config.festivoDescanso;
 }
 for (const [id, key] of cfg) {
   const el = document.getElementById(id);
-  el.onchange = () => { state.config[key] = Math.max(0, parseInt(el.value, 10) || 0); el.value = state.config[key]; guardar(); };
+  el.onchange = () => { state.config[key] = Math.max(0, parseInt(el.value, 10) || 0); el.value = state.config[key]; guardar(); renderLegend(); };
 }
 document.getElementById("cfgFestDesc").onchange = e => { state.config.festivoDescanso = e.target.checked; guardar(); };
 document.getElementById("festAdd").onclick = anadirFestivo;

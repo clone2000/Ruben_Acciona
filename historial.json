@@ -48,5 +48,15 @@
     "coste_usd": 2.0034,
     "tokens": 484640,
     "codigo": 0
+  },
+  {
+    "fecha": "19/11/2026 21:21:41",
+    "motor": "claude",
+    "modelo": "claude-opus-5-5",
+    "tarea": "los dias fectivos o domingos se cuenta como 2 dias extras de librar",
+    "respuesta": "\n🔧 Bash  grep -n \"t.extra++\\|cuenta como un solo día\\|cuenta como 1\\|festivoDescanso: true\\|cfgMin\\...\n\n🔧 Bash  sed -n 186,194p gestion_descansos.html && sed -n 778,790p gestion_descansos.html\n\n🔧 Bash  sed -i \\\n -e 's|se le suma un <b>día extra</b> que se le debe|se le suman <b>2 días extra ...\n\n🔧 Bash  sed -i 's|el.value = state.config\\[key\\]; guardar(); };|el.value = state.config[key]; guar...\nCada domingo o festivo trabajado ya suma **2 días extra de librar**. Lo he probado con el mismo ejemplo de antes y las cuentas salen bien. No lo he probado haciendo clics en el navegador.\n\n| Trabajado | Días extra |\n|---|---|\n| Domingo 1 de noviembre | 2 |\n| Domingo festivo 6 de diciembre | 2 (un domingo que además es festivo cuenta una sola vez) |\n| Festivo martes 8 de diciembre | 2 |\n| Domingo 13 de diciembre | 2 |\n| **Total de diciembre** | **6** |\n| **Total del año** | **8** |\n\n- **Dónde se ve:** en las columnas «Extra» y «Extra año» del cuadrante, en «Días extra que se le deben» del Resumen anual y en el Excel.\n- **Si cambia el convenio:** en «Trabajadores y ajustes» hay un ajuste nuevo, «Días extra de librar por cada domingo o festivo trabajado», que viene en 2. Si lo cambias, todos los contadores se recalculan.\n- **Lo que ya tenías:** los datos guardados se mantienen y los contadores pasan a usar el 2 automáticamente.\n\nEl contador sigue solo sumando. Si quieres, añado una marca «Día compensado» para ir restando los días extra que ya ha librado cada uno y ver los que le quedan pendientes.",
+    "coste_usd": 2.1982,
+    "tokens": 519739,
+    "codigo": 0
   }
 ]
