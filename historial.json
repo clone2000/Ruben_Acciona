@@ -38,5 +38,15 @@
     "coste_usd": 1.6947,
     "tokens": 263071,
     "codigo": 0
+  },
+  {
+    "fecha": "19/11/2026 21:19:14",
+    "motor": "claude",
+    "modelo": "claude-opus-5-5",
+    "tarea": "descanso extra quitalo, si trabaja un domingo o vestivo poner un contador para ver los dias extras que se le deven por aver trabajado un domingo o un festivo",
+    "respuesta": "\n🔧 Bash  grep -n \"DX\\|FT\\|festivosTrabajadosAnio\\|Descanso extra\\|descanso extra\\|colspan\" gestion_...\n\n🔧 Read  E:\\Ruben_Acciona\\gestion_descansos.html\n\n🔧 Read  E:\\Ruben_Acciona\\gestion_descansos.html\n\n🔧 Read  E:\\Ruben_Acciona\\gestion_descansos.html\n\n🔧 Read  E:\\Ruben_Acciona\\gestion_descansos.html\n\n🔧 Read  E:\\Ruben_Acciona\\gestion_descansos.html\n\n🔧 Write  C:\\Users\\BackMan\\AppData\\Local\\Temp\\extra_patch.py\n\n🔧 Bash  python \"$TEMP/extra_patch.py\" gestion_descansos.html && rm \"$TEMP/extra_patch.py\" && node ...\nHe quitado el «Descanso extra» y he puesto un contador de días extra en `gestion_descansos.html`. Lo he probado con datos de ejemplo y las cuentas salen bien, pero no lo he probado haciendo clics en el navegador.\n\n**Descanso extra eliminado**\n- Ya no aparece la marca ni su columna.\n- Si había días marcados con «Descanso extra», se borran solos al abrir el programa (y también al cargar una copia de seguridad antigua).\n\n**Contador de días extra**\n\nPara que cuente, marca con **«Trabaja»** el domingo o el festivo que haya trabajado esa persona.\n\n- **En el cuadrante mensual** hay columnas nuevas:\n  - **DT**: domingos trabajados en el mes.\n  - **FT**: festivos trabajados en el mes.\n  - **Extra**: días que se le deben ese mes.\n  - **Extra año**: total acumulado en el año.\n- **En el Resumen anual:** columnas de domingos trabajados, festivos trabajados y **días extra que se le deben**, resaltados en azul.\n- **En el Excel (CSV):** salen también estos datos.\n- Si un domingo es además festivo y lo trabaja, cuenta como **1 solo día extra**.\n\nLa prueba, con un trabajador que trabaja el domingo 1 de noviembre, el domingo festivo 6 de diciembre, el festivo 8 de diciembre y el domingo 13 de diciembre:\n- En diciembre: 2 domingos trabajados, 2 festivos trabajados y **3 días extra**.\n- En el año: **4 días extra**.\n\nAhora mismo el contador solo suma. No hay forma de descontar los días extra cuando alguien los disfruta. Si quieres, añado una marca «Día compensado» que los vaya restando para ver los que le quedan pendientes.",
+    "coste_usd": 2.0034,
+    "tokens": 484640,
+    "codigo": 0
   }
 ]
