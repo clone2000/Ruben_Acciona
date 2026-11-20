@@ -1,0 +1,34 @@
+{
+  "workers": [],
+  "marks": {},
+  "festivos": {
+    "2026-11-24": "navidad"
+  },
+  "plan": {
+    "2026-11-20": {
+      "1": {
+        "obra": "",
+        "turno": "Tarde",
+        "notas": ""
+      },
+      "2": {
+        "obra": "",
+        "turno": "Tarde",
+        "notas": ""
+      }
+    }
+  },
+  "config": {
+    "apAnual": 5,
+    "vacAnual": 30,
+    "minCobertura": 0,
+    "festivoDescanso": true,
+    "extraPorDia": 2,
+    "turnos": [
+      "Mañana",
+      "Tarde",
+      "Noche"
+    ]
+  },
+  "nextId": 4
+}
