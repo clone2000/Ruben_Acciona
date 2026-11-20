@@ -1,5 +1,11 @@
 {
-  "workers": [],
+  "workers": [
+    {
+      "id": 4,
+      "name": "Ruben Toirres",
+      "offset": 0
+    }
+  ],
   "marks": {},
   "festivos": {
     "2026-11-24": "navidad"
@@ -28,5 +34,5 @@
       "Tarde"
     ]
   },
-  "nextId": 4
+  "nextId": 5
 }
