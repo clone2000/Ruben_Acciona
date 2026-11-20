@@ -15,6 +15,8 @@
     --c-T: #e5e7eb;  /* Trabaja (anula descanso) */
     --c-F: #1e3a8a;  /* Descanso fijo: azul oscuro */
     --c-FE: #facc15; /* Festivo: amarillo */
+    --c-SAN: #7c3aed; /* Sanción: violeta */
+    --c-BA: #0891b2;  /* Baja: cian */
   }
   * { box-sizing: border-box; }
   body { margin: 0; font-family: "Segoe UI", Arial, sans-serif; background: var(--bg); color: var(--text); font-size: 14px; }
@@ -67,11 +69,15 @@
   td.cell.FE { background: var(--c-FE); color: #713f12; }
   td.cell.V { background: var(--c-V); }
   td.cell.AP { background: var(--c-AP); }
+  td.cell.SAN { background: var(--c-SAN); }
+  td.cell.BA { background: var(--c-BA); }
   td.cell.T { background: var(--c-T); color: #6b7785; }
   table.cal td.tot, table.cal th.tot { padding: 3px 6px; font-size: 12px; min-width: 38px; }
   table.cal th.tot { background: #eef2f7; }
   table.cal td.tot { color: var(--text); font-weight: 600; }
   table.cal td.tot.extra { background: #eff6ff; color: #1d4ed8; }
+  table.cal td.tot.san { background: #f5f3ff; color: #5b21b6; }
+  table.cal td.tot.baja { background: #ecfeff; color: #0e7490; }
   table.cal tr.cover td { background: #f8fafc; font-size: 11px; color: var(--muted); height: 22px; }
   table.cal tr.cover td.low { color: #b91c1c; font-weight: 700; }
   .over { color: #b91c1c !important; }
@@ -89,6 +95,7 @@
   .plan-obra { width: 100%; min-width: 170px; }
   .plan-notas { width: 100%; min-width: 150px; }
   .plan-turno { min-width: 110px; }
+  .plan-marca { min-width: 160px; }
   .stats { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 12px; }
   .stat { background: #f1f4f8; border: 1px solid var(--line); border-radius: 8px; padding: 6px 12px; font-size: 12px; color: var(--muted); }
   .stat b { display: block; font-size: 17px; color: var(--text); }
@@ -161,6 +168,7 @@
         <b>Festivos:</b> haz clic en el número del día (cabecera) para marcarlo o desmarcarlo como festivo.
         Los domingos y el descanso semanal correlativo se calculan solos. Si alguien <b>trabaja un domingo o un festivo</b>,
         márcalo con «Trabaja»: se le suman <b>2 días extra de librar</b> (configurable en «Trabajadores y ajustes») (columna «Extra» y pestaña «Resumen anual»).
+        <b>Sanción</b> y <b>Baja</b> son días en los que el trabajador no trabaja: no cuentan como día trabajado ni generan días extra, y salen en el «Resumen anual».
       </div>
     </div>
 
@@ -187,11 +195,16 @@
       <div class="table-wrap"><table class="grid" id="yearTable"></table></div>
       <p class="hint">En cada mes: <span class="pill" style="background:var(--c-V)">V</span> días de vacaciones ·
         <span class="pill" style="background:var(--c-AP)">AP</span> asuntos propios. Los números en rojo superan lo permitido.
-        Los «días extra» son los días de librar que se le deben: cada domingo o festivo trabajado suma 2 (configurable). Si un domingo es además festivo, se cuenta una sola vez.</p>
+        Los «días extra» son los días de librar que se le deben: cada domingo o festivo trabajado suma 2 (configurable). Si un domingo es además festivo, se cuenta una sola vez.
+        Las <b>sanciones</b> y las <b>bajas</b> se marcan en el cuadrante mensual y se cuentan aparte: son días sin trabajar.</p>
     </div>
     <div class="card">
       <h3 style="margin-top:0">Detalle de asuntos propios (fechas)</h3>
       <div id="apDetail"></div>
+    </div>
+    <div class="card">
+      <h3 style="margin-top:0">Detalle de sanciones y bajas (fechas)</h3>
+      <div id="sanDetail"></div>
     </div>
   </section>
 
@@ -220,8 +233,9 @@
       <div id="planResumen"></div>
       <div class="table-wrap"><table class="grid" id="planTable"></table></div>
       <datalist id="planObras"></datalist>
-      <p class="hint">En cada trabajador que trabaja ese día puedes poner la <b>asignación</b> (obra o centro de trabajo), el <b>turno</b>
-        y <b>notas</b>. Se guarda solo, en el mismo archivo de datos. Los trabajadores que descansan ese día aparecen en gris y no se pueden asignar
+      <p class="hint">En la columna <b>Marca del día</b> puedes poner a alguien de <b>vacaciones</b>, con <b>asunto propio</b>, con <b>sanción</b>
+        o de <b>baja</b> (y quitarlo con «Automático»). En los que trabajan ese día también puedes poner la <b>asignación</b> (obra o centro de trabajo),
+        el <b>turno</b> y <b>notas</b>. Se guarda solo, en el mismo archivo de datos. Los trabajadores que descansan ese día aparecen en gris y no se pueden asignar
         (para cambiar un descanso hay que ir al cuadrante mensual).</p>
     </div>
   </section>
@@ -318,11 +332,13 @@ const TIPOS = {
   FE: { nombre: "Festivo (descanso)", corto: "FE", color: "var(--c-FE)" },
   V:  { nombre: "Vacaciones",         corto: "V",  color: "var(--c-V)"  },
   AP: { nombre: "Asunto propio",      corto: "AP", color: "var(--c-AP)" },
+  SAN:{ nombre: "Sanción",             corto: "SAN",color: "var(--c-SAN)" },
+  BA: { nombre: "Baja",                corto: "BA", color: "var(--c-BA)"  },
   T:  { nombre: "Trabaja (anula descanso)", corto: "T", color: "var(--c-T)" },
 };
 /** Color del texto de las muestras de la leyenda (oscuro sobre fondos claros) */
 const colorTexto = k => k === "T" ? "color:#6b7785" : k === "FE" ? "color:#713f12" : "";
-const PINCELES = ["V", "AP", "T"];
+const PINCELES = ["V", "AP", "SAN", "BA", "T"];
 
 /* ===================== ESTADO ===================== */
 let state = cargar();
@@ -423,7 +439,7 @@ function totalesMes(worker, y, m) {
   // DT = domingos trabajados, FT = festivos trabajados,
   // extra = días de librar que se le deben: cada domingo/festivo trabajado suma config.extraPorDia
   // (un domingo que además es festivo se cuenta una sola vez)
-  const t = { trab: 0, D: 0, S: 0, F: 0, FE: 0, FT: 0, DT: 0, extra: 0, V: 0, AP: 0 };
+  const t = { trab: 0, D: 0, S: 0, F: 0, FE: 0, FT: 0, DT: 0, extra: 0, V: 0, AP: 0, SAN: 0, BA: 0 };
   const n = diasEnMes(y, m);
   for (let d = 1; d <= n; d++) {
     const tipo = tipoDia(worker, y, m, d);
@@ -467,6 +483,19 @@ function marcasAnio(worker, y) {
   return { porMes, tot, fechasAP };
 }
 
+/** Fechas en las que un trabajador tiene marcado un tipo concreto (SANCION, BAJA...) en un año */
+function marcasTipoAnio(worker, y, tipo) {
+  const fechas = [];
+  const prefijo = `${worker.id}|${y}-`;
+  for (const [k, t] of Object.entries(state.marks)) {
+    if (!k.startsWith(prefijo)) continue;
+    if (t !== tipo) continue;
+    fechas.push(k.slice(k.indexOf("|") + 1));
+  }
+  fechas.sort();
+  return fechas;
+}
+
 /* ===================== MARCADO ===================== */
 /** Aplica el pincel a una celda. accion: "poner" | "quitar". Devuelve true si cambió algo. */
 function aplicar(worker, iso, y, m, d, accion) {
@@ -481,7 +510,7 @@ function aplicar(worker, iso, y, m, d, accion) {
     toast("No se puede poner un asunto propio en un día que ya es de descanso");
     return false;
   }
-  if (pincel === "T" && auto === null) {
+  if (pincel === "T" && auto === null && state.marks[k] !== "SAN" && state.marks[k] !== "BA") {
     toast("«Trabaja» solo sirve para anular un domingo, festivo, descanso semanal o descanso fijo");
     return false;
   }
@@ -490,6 +519,19 @@ function aplicar(worker, iso, y, m, d, accion) {
     if (usados >= state.config.apAnual) {
       if (!confirm(`${worker.name} ya tiene ${usados} asuntos propios en ${y} (máximo ${state.config.apAnual}). ¿Añadir igualmente?`)) return false;
     }
+  }
+  // Una sanción en un día de descanso suele ser un error: se pregunta antes de marcarla
+  if (pincel === "SAN" && auto !== null && auto !== "SAN" && auto !== "BA") {
+    if (!confirm(`${worker.name}: el ${d} de ${MESES[m]} es un día de descanso (${TIPOS[auto].nombre}).\n¿Marcar la sanción igualmente?`)) return false;
+  }
+  // Avisa si la sanción o la baja sustituyen a otra marca ya puesta (vacaciones, asunto propio, «Trabaja»...)
+  if ((pincel === "SAN" || pincel === "BA") && state.marks[k] && state.marks[k] !== pincel) {
+    const anterior = TIPOS[state.marks[k]] ? TIPOS[state.marks[k]].nombre : state.marks[k];
+    if (!confirm(`Ese día ya estaba marcado como «${anterior}». Al marcar «${TIPOS[pincel].nombre}» se sustituirá. ¿Continuar?`)) return false;
+  }
+  // Marcar «Trabaja» sobre una sanción o una baja las quita de ese día
+  if (pincel === "T" && (state.marks[k] === "SAN" || state.marks[k] === "BA")) {
+    if (!confirm(`Al marcar «Trabaja» se quitará la ${TIPOS[state.marks[k]].nombre.toLowerCase()} de ese día. ¿Continuar?`)) return false;
   }
   if (state.marks[k] === pincel) return false;
   state.marks[k] = pincel;
@@ -509,7 +551,7 @@ function renderBrushes() {
 function renderLegend() {
   document.getElementById("legend").innerHTML = Object.entries(TIPOS).map(([k, t]) =>
     `<span class="row" style="gap:4px"><span class="sw" style="background:${t.color};${colorTexto(k)}">${t.corto}</span>${t.nombre}</span>`
-  ).join("") + `<span class="hint">· Columnas: Trab = días trabajados, D = domingos, S = descanso semanal rotativo, F = descanso fijo, FE = festivos descansados, FT = festivos trabajados, DT = domingos trabajados, Extra = días de librar que se le deben (cada domingo o festivo trabajado suma ${state.config.extraPorDia}; del mes y del año), V = vacaciones, AP mes / AP año</span>`;
+  ).join("") + `<span class="hint">· Columnas: Trab = días trabajados, D = domingos, S = descanso semanal rotativo, F = descanso fijo, FE = festivos descansados, FT = festivos trabajados, DT = domingos trabajados, Extra = días de librar que se le deben (cada domingo o festivo trabajado suma ${state.config.extraPorDia}; del mes y del año), V = vacaciones, AP mes / AP año, SAN = sanciones, BA = bajas</span>`;
 }
 
 function renderMensual() {
@@ -533,7 +575,7 @@ function renderMensual() {
     const tit = fn !== undefined ? `Festivo${fn ? ": " + esc(fn) : ""} (clic para quitar)` : "Clic para marcar como festivo";
     h += `<th class="day ${dow === 6 ? "sun" : ""} ${fn !== undefined ? "fest" : ""} ${esHoy(d) ? "today" : ""}" data-fest="${d}" title="${tit}">${d}<span class="dw">${fn !== undefined ? "FEST" : DIAS_CORTOS[dow]}</span></th>`;
   }
-  h += `<th class="tot">Trab</th><th class="tot">D</th><th class="tot">S</th><th class="tot">F</th><th class="tot" title="Festivos descansados">FE</th><th class="tot" title="Festivos trabajados">FT</th><th class="tot" title="Domingos trabajados">DT</th><th class="tot" title="Días de librar que se le deben este mes (cada domingo o festivo trabajado suma ${state.config.extraPorDia})">Extra</th><th class="tot" title="Días extra que se le deben en el año">Extra año</th><th class="tot">V</th><th class="tot">AP mes</th><th class="tot">AP año</th></tr></thead><tbody>`;
+  h += `<th class="tot">Trab</th><th class="tot">D</th><th class="tot">S</th><th class="tot">F</th><th class="tot" title="Festivos descansados">FE</th><th class="tot" title="Festivos trabajados">FT</th><th class="tot" title="Domingos trabajados">DT</th><th class="tot" title="Días de librar que se le deben este mes (cada domingo o festivo trabajado suma ${state.config.extraPorDia})">Extra</th><th class="tot" title="Días extra que se le deben en el año">Extra año</th><th class="tot">V</th><th class="tot">AP mes</th><th class="tot">AP año</th><th class="tot" title="Días de sanción">SAN</th><th class="tot" title="Días de baja">BA</th></tr></thead><tbody>`;
 
   const cobertura = new Array(n + 1).fill(0);
   for (const w of state.workers) {
@@ -548,7 +590,8 @@ function renderMensual() {
     const apAnio = marcasAnio(w, y).tot.AP;
     const apCls = apAnio > state.config.apAnual ? "over" : "";
     h += `<td class="tot">${t.trab}</td><td class="tot">${t.D}</td><td class="tot">${t.S}</td><td class="tot">${t.F}</td><td class="tot">${t.FE}</td><td class="tot">${t.FT}</td><td class="tot">${t.DT}</td><td class="tot extra">${t.extra}</td><td class="tot extra">${extrasAnio(w, y).extra}</td><td class="tot">${t.V}</td><td class="tot">${t.AP}</td>`;
-    h += `<td class="tot ${apCls}">${apAnio}/${state.config.apAnual}</td></tr>`;
+    h += `<td class="tot ${apCls}">${apAnio}/${state.config.apAnual}</td>`;
+    h += `<td class="tot san">${t.SAN}</td><td class="tot baja">${t.BA}</td></tr>`;
   }
   // Fila de cobertura
   h += `<tr class="cover"><td class="name" style="background:#f8fafc">Trabajando</td>`;
@@ -556,7 +599,7 @@ function renderMensual() {
     const low = state.config.minCobertura > 0 && cobertura[d] < state.config.minCobertura;
     h += `<td class="${low ? "low" : ""}">${cobertura[d]}</td>`;
   }
-  h += `<td colspan="12"></td></tr></tbody>`;
+  h += `<td colspan="14"></td></tr></tbody>`;
   tabla.innerHTML = h;
 }
 
@@ -624,8 +667,9 @@ function renderAnual() {
   const { apAnual, vacAnual } = state.config;
   let h = `<thead><tr><th class="left">Trabajador</th>`;
   MESES.forEach(mm => h += `<th>${mm.slice(0, 3)}</th>`);
-  h += `<th>Vacaciones<br>usadas / quedan</th><th>Asuntos propios<br>usados / quedan</th><th>Domingos<br>trabajados</th><th>Festivos<br>trabajados</th><th>Días extra<br>que se le deben</th></tr></thead><tbody>`;
+  h += `<th>Vacaciones<br>usadas / quedan</th><th>Asuntos propios<br>usados / quedan</th><th>Domingos<br>trabajados</th><th>Festivos<br>trabajados</th><th>Días extra<br>que se le deben</th><th>Sanciones</th><th>Bajas</th></tr></thead><tbody>`;
   let detalle = "";
+  let detalleSAN = "";
   for (const w of state.workers) {
     const { porMes, tot, fechasAP } = marcasAnio(w, y);
     h += `<tr><td class="left">${esc(w.name)}</td>`;
@@ -635,14 +679,24 @@ function renderAnual() {
     h += `<td class="${tot.V > vacAnual ? "over" : ""}"><b>${tot.V}</b> / ${vacAnual - tot.V}</td>`;
     h += `<td class="${tot.AP > apAnual ? "over" : ""}"><b>${tot.AP}</b> / ${apAnual - tot.AP}</td>`;
     const ex = extrasAnio(w, y);
-    h += `<td>${ex.DT}</td><td>${ex.FT}</td><td style="background:#eff6ff;color:#1d4ed8"><b>${ex.extra}</b></td></tr>`;
+    const sanz = marcasTipoAnio(w, y, "SAN");
+    const bajas = marcasTipoAnio(w, y, "BA");
+    h += `<td>${ex.DT}</td><td>${ex.FT}</td><td style="background:#eff6ff;color:#1d4ed8"><b>${ex.extra}</b></td>`;
+    h += `<td style="background:#f5f3ff;color:#5b21b6">${sanz.length}</td><td style="background:#ecfeff;color:#0e7490">${bajas.length}</td></tr>`;
     const fechas = fechasAP.map(f => { const [a, mm, dd] = f.split("-"); return `${dd}/${mm}`; }).join(", ");
     detalle += `<tr><td class="left">${esc(w.name)}</td><td class="left">${fechas || "<span class='hint'>Ninguno</span>"}</td></tr>`;
+    const fs = sanz.map(f => { const [a, mm, dd] = f.split("-"); return `${dd}/${mm}`; }).join(", ");
+    const fb = bajas.map(f => { const [a, mm, dd] = f.split("-"); return `${dd}/${mm}`; }).join(", ");
+    detalleSAN += `<tr><td class="left">${esc(w.name)}</td><td class="left">${fs || "<span class='hint'>Ninguna</span>"}</td><td class="left">${fb || "<span class='hint'>Ninguna</span>"}</td></tr>`;
   }
   h += `</tbody>`;
   document.getElementById("yearTable").innerHTML = state.workers.length ? h : `<tr><td>No hay trabajadores.</td></tr>`;
   document.getElementById("apDetail").innerHTML = state.workers.length
     ? `<table class="grid"><thead><tr><th class="left" style="width:200px">Trabajador</th><th class="left">Fechas de asuntos propios en ${y}</th></tr></thead><tbody>${detalle}</tbody></table>`
+    : "";
+  document.getElementById("sanDetail").innerHTML = state.workers.length
+    ? `<table class="grid"><thead><tr><th class="left" style="width:200px">Trabajador</th>
+        <th class="left">Fechas de sanciones en ${y}</th><th class="left">Fechas de bajas en ${y}</th></tr></thead><tbody>${detalleSAN}</tbody></table>`
     : "";
 }
 
@@ -698,6 +752,39 @@ function datosPlanDia() {
   return r;
 }
 
+/** Marcas que se pueden poner desde la planificación del día */
+const MARCAS_PLAN = [
+  ["", "Automático (sin marca)"],
+  ["V", "Vacaciones"],
+  ["AP", "Asunto propio"],
+  ["SAN", "Sanción"],
+  ["BA", "Baja"],
+  ["T", "Trabaja (anula descanso)"],
+];
+
+/** Pone o quita una marca (vacaciones, sanción, baja...) desde la planificación del día */
+function marcarDesdePlan(wid, valor) {
+  const w = state.workers.find(x => x.id === Number(wid));
+  if (!w) return;
+  const { y, m, d } = planPartes();
+  const k = claveMarca(w.id, planFecha);
+  const anterior = state.marks[k];
+  if (!valor) {                       // quitar la marca manual
+    if (anterior) { delete state.marks[k]; guardar(); renderPlan(); }
+    return;
+  }
+  if (anterior === valor) return;
+  // Se quita la marca previa para que no salte el aviso de sustitución (el usuario ya ha elegido)
+  if (anterior) delete state.marks[k];
+  const pincelAntes = pincel;
+  pincel = valor;
+  const bien = aplicar(w, planFecha, y, m, d, "poner");
+  pincel = pincelAntes;                               // no cambia el pincel del cuadrante
+  if (!bien && anterior) state.marks[k] = anterior;   // si se cancela, se restaura
+  guardar();
+  renderPlan();
+}
+
 function renderPlan() {
   const { y, m, d } = planPartes();
   document.getElementById("planFecha").value = planFecha;
@@ -718,7 +805,7 @@ function renderPlan() {
 
   const solo = document.getElementById("planSoloTrabajan").checked;
   const turnos = turnosDisponibles();
-  let h = `<thead><tr><th class="left">Trabajador</th><th>Estado</th><th>¿Trabaja?</th>
+  let h = `<thead><tr><th class="left">Trabajador</th><th>Estado</th><th>Marca del día</th><th>¿Trabaja?</th>
       <th class="left">Asignación (obra / centro)</th><th>Turno</th><th class="left">Notas</th></tr></thead><tbody>`;
   for (const w of state.workers) {
     const tipo = tipoDia(w, y, m, d);
@@ -726,12 +813,16 @@ function renderPlan() {
     if (solo && !lab) continue;
     const p = planDe(w.id);
     const dis = lab ? "" : "disabled";
+    const marca = state.marks[claveMarca(w.id, planFecha)] || "";
     const pill = tipo
       ? `<span class="pill" style="background:${TIPOS[tipo].color};${colorTexto(tipo)}">${TIPOS[tipo].corto}</span> <span class="hint">${TIPOS[tipo].nombre}</span>`
       : `<span class="hint">Día normal</span>`;
     h += `<tr class="${lab ? "" : "descansa"}">
       <td class="left">${esc(w.name)}</td>
       <td>${pill}</td>
+      <td><select class="plan-marca" data-w="${w.id}">
+        ${MARCAS_PLAN.map(([v, t]) => `<option value="${v}" ${marca === v ? "selected" : ""}>${esc(t)}</option>`).join("")}
+      </select></td>
       <td>${lab ? "Sí" : "No"}</td>
       <td class="left"><input type="text" class="plan-obra" data-w="${w.id}" data-c="obra" value="${esc(p.obra)}" list="planObras" ${dis}></td>
       <td><select class="plan-turno" data-w="${w.id}" data-c="turno" ${dis}>
@@ -755,7 +846,7 @@ function actualizarResumenPlan() {
   document.getElementById("planStats").innerHTML = [
     stat("Trabajadores", r.total),
     stat("Trabajan ese día", r.trabajan),
-    stat("Descansan", r.descansan.length),
+    stat("No trabajan", r.descansan.length),
     stat("Con asignación", r.asignados),
     stat("Sin asignar", r.sinAsignar.length, r.sinAsignar.length > 0),
   ].join("");
@@ -768,7 +859,7 @@ function actualizarResumenPlan() {
   const obras = Object.entries(r.porObra).sort((a, b) => b[1] - a[1]);
   if (obras.length) h += `<p style="margin:0 0 8px"><b>Por obra:</b> ${obras.map(([o, n]) => `<span class="chip grey">${esc(o)}: ${n}</span>`).join("")}</p>`;
   if (r.sinAsignar.length) h += `<div class="aviso-plan"><b>Sin asignación:</b> ${r.sinAsignar.map(esc).join(", ")}</div>`;
-  if (r.descansan.length) h += `<p class="hint" style="margin:0 0 8px"><b>Descansan ese día:</b> ${r.descansan.map(esc).join(", ")}</p>`;
+  if (r.descansan.length) h += `<p class="hint" style="margin:0 0 8px"><b>No trabajan ese día:</b> ${r.descansan.map(esc).join(", ")}</p>`;
   document.getElementById("planResumen").innerHTML = h;
 }
 
@@ -956,13 +1047,13 @@ function exportarCSV() {
   const filas = [];
   const cab = ["Trabajador"];
   for (let d = 1; d <= n; d++) cab.push(`${d} ${DIAS_CORTOS[infoDia(y, m, d).dow]}${esFestivo(y, m, d) ? " FEST" : ""}`);
-  cab.push("Trabajados", "Domingos", "Desc. semanal", "Desc. fijo", "Festivos desc.", "Festivos trab.", "Domingos trab.", "Días extra mes", "Días extra año", "Vacaciones", "AP mes", "AP año");
+  cab.push("Trabajados", "Domingos", "Desc. semanal", "Desc. fijo", "Festivos desc.", "Festivos trab.", "Domingos trab.", "Días extra mes", "Días extra año", "Vacaciones", "AP mes", "AP año", "Sanciones", "Bajas");
   filas.push(cab.map(q).join(";"));
   for (const w of state.workers) {
     const f = [w.name];
     for (let d = 1; d <= n; d++) { const t = tipoDia(w, y, m, d); f.push(t && t !== "T" ? TIPOS[t].corto : ""); }
     const t = totalesMes(w, y, m);
-    f.push(t.trab, t.D, t.S, t.F, t.FE, t.FT, t.DT, t.extra, extrasAnio(w, y).extra, t.V, t.AP, marcasAnio(w, y).tot.AP);
+    f.push(t.trab, t.D, t.S, t.F, t.FE, t.FT, t.DT, t.extra, extrasAnio(w, y).extra, t.V, t.AP, marcasAnio(w, y).tot.AP, t.SAN, t.BA);
     filas.push(f.map(q).join(";"));
   }
   descargar(`cuadrante_${y}_${pad(m + 1)}.csv`, "﻿" + filas.join("\r\n"), "text/csv;charset=utf-8");
@@ -1499,9 +1590,13 @@ document.getElementById("planTable").addEventListener("input", e => {
 });
 document.getElementById("planTable").addEventListener("change", e => {
   const el = e.target.closest("select[data-w][data-c]");
-  if (!el) return;
-  setPlan(el.dataset.w, el.dataset.c, el.value);
-  actualizarResumenPlan();
+  if (el) {
+    setPlan(el.dataset.w, el.dataset.c, el.value);
+    actualizarResumenPlan();
+    return;
+  }
+  const mk = e.target.closest(".plan-marca");   // marcar vacaciones, sanción, baja...
+  if (mk) marcarDesdePlan(mk.dataset.w, mk.value);
 });
 document.getElementById("festAdd").onclick = anadirFestivo;
 cargarConfigUI();
