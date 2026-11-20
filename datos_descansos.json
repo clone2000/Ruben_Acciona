@@ -25,9 +25,7 @@
     "festivoDescanso": true,
     "extraPorDia": 2,
     "turnos": [
-      "Mañana",
-      "Tarde",
-      "Noche"
+      "Tarde"
     ]
   },
   "nextId": 4
