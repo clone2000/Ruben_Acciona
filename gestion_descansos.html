@@ -84,6 +84,21 @@
   .fijos label { display: inline-flex; align-items: center; gap: 2px; margin: 0 4px; cursor: pointer; }
   .pill { display: inline-block; border-radius: 10px; padding: 1px 7px; font-size: 11px; font-weight: 600; color: #fff; margin: 1px; }
 
+  /* Planificación del día */
+  .plan-dia { font-size: 17px; font-weight: 600; }
+  .plan-obra { width: 100%; min-width: 170px; }
+  .plan-notas { width: 100%; min-width: 150px; }
+  .plan-turno { min-width: 110px; }
+  .stats { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 12px; }
+  .stat { background: #f1f4f8; border: 1px solid var(--line); border-radius: 8px; padding: 6px 12px; font-size: 12px; color: var(--muted); }
+  .stat b { display: block; font-size: 17px; color: var(--text); }
+  .stat.warn-stat b { color: #b91c1c; }
+  .aviso-plan { background: #fff7ed; border: 1px solid #fdba74; border-radius: 8px; padding: 8px 12px; margin-bottom: 10px; font-size: 13px; }
+  table.grid tr.descansa td { background: #f8fafc; color: var(--muted); }
+  table.grid tr.descansa input, table.grid tr.descansa select { background: #f1f4f8; }
+  .chip { display: inline-block; background: #e3edfc; color: #1d4ed8; border-radius: 10px; padding: 1px 9px; font-size: 12px; font-weight: 600; margin: 2px; }
+  .chip.grey { background: #eceff3; color: #475569; }
+
   .file-status { margin-left: auto; display: flex; align-items: center; gap: 8px; font-size: 13px; }
   .file-status .dot { width: 10px; height: 10px; border-radius: 50%; background: #fbbf24; display: inline-block; }
   .file-status.ok .dot { background: #4ade80; }
@@ -111,6 +126,7 @@
   <nav class="tabs">
     <button data-tab="mensual" class="active">Cuadrante mensual</button>
     <button data-tab="anual">Resumen anual</button>
+    <button data-tab="plan">Planificación del día</button>
     <button data-tab="trabajadores">Trabajadores y ajustes</button>
   </nav>
   <div class="file-status no-print" id="fileStatus"><span class="dot"></span><span id="fileStatusTxt">Sin archivo de datos</span></div>
@@ -179,6 +195,37 @@
     </div>
   </section>
 
+  <!-- ============ PLANIFICACIÓN DEL DÍA ============ -->
+  <section id="tab-plan" class="hidden">
+    <div class="card no-print">
+      <div class="row">
+        <button class="btn" id="planPrev">&#9664;</button>
+        <input type="date" id="planFecha">
+        <button class="btn" id="planNext">&#9654;</button>
+        <button class="btn" id="planToday">Hoy</button>
+        <div class="plan-dia" id="planTitulo"></div>
+        <div class="spacer"></div>
+        <label class="fijos"><input type="checkbox" id="planSoloTrabajan" checked> Solo los que trabajan</label>
+        <button class="btn" id="planCopiar">Copiar del día anterior</button>
+        <button class="btn" id="planVaciar">Vaciar este día</button>
+        <button class="btn" id="planCsv">Exportar día (CSV)</button>
+        <button class="btn" id="planVerMes">Ver el mes en el cuadrante</button>
+      </div>
+      <div id="planAviso" style="margin-top:10px"></div>
+    </div>
+
+    <div class="card">
+      <h3 style="margin-top:0">Planificación del <span id="planTitulo2"></span></h3>
+      <div class="stats" id="planStats"></div>
+      <div id="planResumen"></div>
+      <div class="table-wrap"><table class="grid" id="planTable"></table></div>
+      <datalist id="planObras"></datalist>
+      <p class="hint">En cada trabajador que trabaja ese día puedes poner la <b>asignación</b> (obra o centro de trabajo), el <b>turno</b>
+        y <b>notas</b>. Se guarda solo, en el mismo archivo de datos. Los trabajadores que descansan ese día aparecen en gris y no se pueden asignar
+        (para cambiar un descanso hay que ir al cuadrante mensual).</p>
+    </div>
+  </section>
+
   <!-- ============ TRABAJADORES Y AJUSTES ============ -->
   <section id="tab-trabajadores" class="hidden">
     <div class="card">
@@ -202,6 +249,10 @@
           <input type="number" id="cfgMin" min="0" max="999" style="width:70px"> personas un día</label>
         <label>Días extra de librar por cada domingo o festivo trabajado:
           <input type="number" id="cfgExtra" min="0" max="9" style="width:70px"></label>
+      </div>
+      <div class="row" style="margin-top:10px">
+        <label style="flex:1;min-width:280px">Turnos de la planificación diaria (separados por comas):
+          <input type="text" id="cfgTurnos" placeholder="Mañana, Tarde, Noche" style="width:100%"></label>
       </div>
       <p class="hint">Los días de vacaciones se cuentan tal y como se marcan en el cuadrante (incluidos domingos si se marcan).</p>
     </div>
@@ -281,13 +332,13 @@ let anioResumen = hoy.getFullYear();
 let pincel = "V";
 
 function estadoInicial() {
-  return { workers: [], marks: {}, festivos: {}, config: { apAnual: 2, vacAnual: 30, minCobertura: 0, festivoDescanso: true, extraPorDia: 2 }, nextId: 1 };
+  return { workers: [], marks: {}, festivos: {}, plan: {}, config: { apAnual: 2, vacAnual: 30, minCobertura: 0, festivoDescanso: true, extraPorDia: 2, turnos: ["Mañana", "Tarde", "Noche"] }, nextId: 1 };
 }
 /** Completa y limpia unos datos leídos (de archivo, copia o navegador) */
 function normalizar(s) {
   if (!s || !Array.isArray(s.workers) || typeof s.marks !== "object") throw new Error("formato no válido");
   const base = estadoInicial();
-  return limpiarMarcas({ ...base, ...s, festivos: s.festivos || {}, config: { ...base.config, ...(s.config || {}) } });
+  return limpiarMarcas({ ...base, ...s, festivos: s.festivos || {}, plan: s.plan || {}, config: { ...base.config, ...(s.config || {}) } });
 }
 function cargar() {
   try {
@@ -593,6 +644,180 @@ function renderAnual() {
   document.getElementById("apDetail").innerHTML = state.workers.length
     ? `<table class="grid"><thead><tr><th class="left" style="width:200px">Trabajador</th><th class="left">Fechas de asuntos propios en ${y}</th></tr></thead><tbody>${detalle}</tbody></table>`
     : "";
+}
+
+/* ===================== PLANIFICACIÓN DEL DÍA ===================== */
+/* state.plan[ "AAAA-MM-DD" ][ idTrabajador ] = { obra, turno, notas } */
+let planFecha = isoDate(hoy.getFullYear(), hoy.getMonth(), hoy.getDate());
+const NOMBRES_DIA_LARGO = ["lunes", "martes", "miércoles", "jueves", "viernes", "sábado", "domingo"];
+
+function planPartes() {
+  const [a, m, d] = planFecha.split("-").map(Number);
+  return { y: a, m: m - 1, d };
+}
+/** Asignación guardada de un trabajador en el día seleccionado */
+function planDe(wid) {
+  const dia = state.plan[planFecha];
+  const p = dia && dia[wid];
+  return { obra: (p && p.obra) || "", turno: (p && p.turno) || "", notas: (p && p.notas) || "" };
+}
+function setPlan(wid, campo, valor) {
+  if (!state.plan[planFecha]) state.plan[planFecha] = {};
+  if (!state.plan[planFecha][wid]) state.plan[planFecha][wid] = { obra: "", turno: "", notas: "" };
+  state.plan[planFecha][wid][campo] = valor;
+  const p = state.plan[planFecha][wid];
+  if (!p.obra && !p.turno && !p.notas) delete state.plan[planFecha][wid];
+  if (!Object.keys(state.plan[planFecha]).length) delete state.plan[planFecha];
+  guardar();
+}
+/** Obras o centros ya usados en alguna planificación (para el desplegable de suggestions) */
+function planObrasUsadas() {
+  const set = new Set();
+  for (const dia of Object.values(state.plan || {}))
+    for (const p of Object.values(dia)) if (p && p.obra) set.add(p.obra);
+  return [...set].sort();
+}
+function turnosDisponibles() {
+  const t = state.config.turnos;
+  return Array.isArray(t) && t.length ? t : ["Mañana", "Tarde", "Noche"];
+}
+
+/** Datos del día: quién trabaja, quién descansa y qué hay asignado */
+function datosPlanDia() {
+  const { y, m, d } = planPartes();
+  const r = { total: state.workers.length, trabajan: 0, descansan: [], asignados: 0, sinAsignar: [], porTurno: {}, porObra: {} };
+  for (const w of state.workers) {
+    const tipo = tipoDia(w, y, m, d);
+    if (!trabaja(tipo)) { r.descansan.push(w.name); continue; }
+    r.trabajan++;
+    const p = planDe(w.id);
+    if (p.obra || p.turno) r.asignados++; else r.sinAsignar.push(w.name);
+    if (p.turno) r.porTurno[p.turno] = (r.porTurno[p.turno] || 0) + 1;
+    if (p.obra) r.porObra[p.obra] = (r.porObra[p.obra] || 0) + 1;
+  }
+  return r;
+}
+
+function renderPlan() {
+  const { y, m, d } = planPartes();
+  document.getElementById("planFecha").value = planFecha;
+  const dow = infoDia(y, m, d).dow;
+  const f = festivo(y, m, d);
+  const titulo = `${d} de ${MESES[m]} de ${y} (${NOMBRES_DIA_LARGO[dow]})`;
+  document.getElementById("planTitulo").textContent = titulo;
+  document.getElementById("planTitulo2").textContent = titulo;
+
+  const avisos = [];
+  if (f !== undefined) avisos.push(`Es <b>festivo</b>${f ? ": " + esc(f) : ""}.`);
+  if (dow === 6) avisos.push("Es <b>domingo</b>.");
+  if (state.config.minCobertura > 0) {
+    const r = datosPlanDia();
+    if (r.trabajan < state.config.minCobertura) avisos.push(`Ese día solo trabajan <b>${r.trabajan}</b> personas y el aviso está puesto en <b>${state.config.minCobertura}</b>.`);
+  }
+  document.getElementById("planAviso").innerHTML = avisos.length ? `<div class="aviso-plan">${avisos.join(" ")}</div>` : "";
+
+  const solo = document.getElementById("planSoloTrabajan").checked;
+  const turnos = turnosDisponibles();
+  let h = `<thead><tr><th class="left">Trabajador</th><th>Estado</th><th>¿Trabaja?</th>
+      <th class="left">Asignación (obra / centro)</th><th>Turno</th><th class="left">Notas</th></tr></thead><tbody>`;
+  for (const w of state.workers) {
+    const tipo = tipoDia(w, y, m, d);
+    const lab = trabaja(tipo);
+    if (solo && !lab) continue;
+    const p = planDe(w.id);
+    const dis = lab ? "" : "disabled";
+    const pill = tipo
+      ? `<span class="pill" style="background:${TIPOS[tipo].color};${colorTexto(tipo)}">${TIPOS[tipo].corto}</span> <span class="hint">${TIPOS[tipo].nombre}</span>`
+      : `<span class="hint">Día normal</span>`;
+    h += `<tr class="${lab ? "" : "descansa"}">
+      <td class="left">${esc(w.name)}</td>
+      <td>${pill}</td>
+      <td>${lab ? "Sí" : "No"}</td>
+      <td class="left"><input type="text" class="plan-obra" data-w="${w.id}" data-c="obra" value="${esc(p.obra)}" list="planObras" ${dis}></td>
+      <td><select class="plan-turno" data-w="${w.id}" data-c="turno" ${dis}>
+        <option value="">—</option>
+        ${turnos.map(t => `<option value="${esc(t)}" ${p.turno === t ? "selected" : ""}>${esc(t)}</option>`).join("")}
+        ${p.turno && !turnos.includes(p.turno) ? `<option value="${esc(p.turno)}" selected>${esc(p.turno)}</option>` : ""}
+      </select></td>
+      <td class="left"><input type="text" class="plan-notas" data-w="${w.id}" data-c="notas" value="${esc(p.notas)}" ${dis}></td>
+    </tr>`;
+  }
+  h += `</tbody>`;
+  document.getElementById("planTable").innerHTML = state.workers.length ? h : `<tr><td class="hint" style="border:0">No hay trabajadores.</td></tr>`;
+  document.getElementById("planObras").innerHTML = planObrasUsadas().map(o => `<option value="${esc(o)}">`).join("");
+  actualizarResumenPlan();
+}
+
+/** Resumen del día: cifras, turnos, obras y avisos */
+function actualizarResumenPlan() {
+  const r = datosPlanDia();
+  const stat = (k, v, warn) => `<div class="stat${warn ? " warn-stat" : ""}"><b>${v}</b>${esc(k)}</div>`;
+  document.getElementById("planStats").innerHTML = [
+    stat("Trabajadores", r.total),
+    stat("Trabajan ese día", r.trabajan),
+    stat("Descansan", r.descansan.length),
+    stat("Con asignación", r.asignados),
+    stat("Sin asignar", r.sinAsignar.length, r.sinAsignar.length > 0),
+  ].join("");
+
+  let h = "";
+  const turnos = turnosDisponibles();
+  const conTurno = turnos.filter(t => r.porTurno[t]).map(t => `<span class="chip">${esc(t)}: ${r.porTurno[t]}</span>`);
+  const otros = Object.keys(r.porTurno).filter(t => !turnos.includes(t)).map(t => `<span class="chip grey">${esc(t)}: ${r.porTurno[t]}</span>`);
+  if (conTurno.length || otros.length) h += `<p style="margin:0 0 8px"><b>Por turno:</b> ${conTurno.join("")}${otros.join("")}</p>`;
+  const obras = Object.entries(r.porObra).sort((a, b) => b[1] - a[1]);
+  if (obras.length) h += `<p style="margin:0 0 8px"><b>Por obra:</b> ${obras.map(([o, n]) => `<span class="chip grey">${esc(o)}: ${n}</span>`).join("")}</p>`;
+  if (r.sinAsignar.length) h += `<div class="aviso-plan"><b>Sin asignación:</b> ${r.sinAsignar.map(esc).join(", ")}</div>`;
+  if (r.descansan.length) h += `<p class="hint" style="margin:0 0 8px"><b>Descansan ese día:</b> ${r.descansan.map(esc).join(", ")}</p>`;
+  document.getElementById("planResumen").innerHTML = h;
+}
+
+/** Copia las asignaciones del día anterior a este día (solo los que trabajan) */
+function copiarPlanAnterior() {
+  const prev = new Date(planFecha + "T00:00:00");
+  prev.setDate(prev.getDate() - 1);
+  const isoPrev = isoDate(prev.getFullYear(), prev.getMonth(), prev.getDate());
+  const origen = state.plan[isoPrev];
+  if (!origen || !Object.keys(origen).length) { toast("El día anterior no tiene planificación"); return; }
+  if (!confirm(`¿Copiar la planificación del ${isoPrev.split("-").reverse().join("/")} a este día?`)) return;
+  const { y, m, d } = planPartes();
+  let n = 0;
+  for (const [wid, p] of Object.entries(origen)) {
+    const w = state.workers.find(x => x.id === Number(wid));
+    if (!w || !trabaja(tipoDia(w, y, m, d))) continue;
+    if (!state.plan[planFecha]) state.plan[planFecha] = {};
+    state.plan[planFecha][wid] = { obra: p.obra || "", turno: p.turno || "", notas: p.notas || "" };
+    n++;
+  }
+  guardar(); renderPlan();
+  toast(`Planificación copiada (${n} trabajador${n === 1 ? "" : "es"})`);
+}
+
+function vaciarPlanDia() {
+  if (!state.plan[planFecha]) { toast("No hay nada que borrar en este día"); return; }
+  if (!confirm("¿Borrar toda la planificación de este día?")) return;
+  delete state.plan[planFecha];
+  guardar(); renderPlan();
+  toast("Planificación borrada");
+}
+
+function exportarPlanCSV() {
+  const { y, m, d } = planPartes();
+  const q = s => `"${String(s).replace(/"/g, '""')}"`;
+  const filas = [["Fecha", "Trabajador", "Estado", "Trabaja", "Obra", "Turno", "Notas"].map(q).join(";")];
+  for (const w of state.workers) {
+    const tipo = tipoDia(w, y, m, d);
+    const p = planDe(w.id);
+    filas.push([planFecha, w.name, tipo ? TIPOS[tipo].nombre : "Día normal", trabaja(tipo) ? "Sí" : "No", p.obra, p.turno, p.notas].map(q).join(";"));
+  }
+  descargar(`planificacion_${planFecha}.csv`, "﻿" + filas.join("\r\n"), "text/csv;charset=utf-8");
+}
+
+function moverPlanDia(delta) {
+  const f = new Date(planFecha + "T00:00:00");
+  f.setDate(f.getDate() + delta);
+  planFecha = isoDate(f.getFullYear(), f.getMonth(), f.getDate());
+  renderPlan();
 }
 
 /* ===================== RENDER: TRABAJADORES ===================== */
@@ -1198,6 +1423,7 @@ let tabActual = "mensual";
 function renderTodo() {
   if (tabActual === "mensual") renderMensual();
   if (tabActual === "anual") renderAnual();
+  if (tabActual === "plan") renderPlan();
   if (tabActual === "trabajadores") { renderTrabajadores(); renderFestivos(); cargarConfigUI(); }
 }
 
@@ -1232,12 +1458,51 @@ const cfg = [["cfgAP", "apAnual"], ["cfgV", "vacAnual"], ["cfgMin", "minCobertur
 function cargarConfigUI() {
   for (const [id, key] of cfg) document.getElementById(id).value = state.config[key];
   document.getElementById("cfgFestDesc").checked = !!state.config.festivoDescanso;
+  document.getElementById("cfgTurnos").value = turnosDisponibles().join(", ");
 }
 for (const [id, key] of cfg) {
   const el = document.getElementById(id);
   el.onchange = () => { state.config[key] = Math.max(0, parseInt(el.value, 10) || 0); el.value = state.config[key]; guardar(); renderLegend(); };
 }
 document.getElementById("cfgFestDesc").onchange = e => { state.config.festivoDescanso = e.target.checked; guardar(); };
+document.getElementById("cfgTurnos").onchange = e => {
+  const t = e.target.value.split(",").map(s => s.trim()).filter(Boolean);
+  state.config.turnos = t.length ? t : ["Mañana", "Tarde", "Noche"];
+  e.target.value = state.config.turnos.join(", ");
+  guardar();
+  if (tabActual === "plan") renderPlan();
+};
+
+/* ---- Planificación del día: eventos ---- */
+document.getElementById("planPrev").onclick = () => moverPlanDia(-1);
+document.getElementById("planNext").onclick = () => moverPlanDia(1);
+document.getElementById("planToday").onclick = () => { planFecha = isoDate(hoy.getFullYear(), hoy.getMonth(), hoy.getDate()); renderPlan(); };
+document.getElementById("planFecha").onchange = e => { if (!e.target.value) return; planFecha = e.target.value; renderPlan(); };
+document.getElementById("planSoloTrabajan").onchange = renderPlan;
+document.getElementById("planCopiar").onclick = copiarPlanAnterior;
+document.getElementById("planVaciar").onclick = vaciarPlanDia;
+document.getElementById("planCsv").onclick = exportarPlanCSV;
+document.getElementById("planVerMes").onclick = () => {
+  const { y, m } = planPartes();
+  vista = { year: y, month: m };
+  tabActual = "mensual";
+  document.querySelectorAll("nav.tabs button").forEach(x => x.classList.toggle("active", x.dataset.tab === "mensual"));
+  document.querySelectorAll("main > section").forEach(s => s.classList.toggle("hidden", s.id !== "tab-mensual"));
+  renderMensual();
+};
+/* Edición de la planificación: se guarda al escribir, sin rehacer la tabla (pierde el foco) */
+document.getElementById("planTable").addEventListener("input", e => {
+  const el = e.target.closest("[data-w][data-c]");
+  if (!el) return;
+  setPlan(el.dataset.w, el.dataset.c, el.value);
+  actualizarResumenPlan();
+});
+document.getElementById("planTable").addEventListener("change", e => {
+  const el = e.target.closest("select[data-w][data-c]");
+  if (!el) return;
+  setPlan(el.dataset.w, el.dataset.c, el.value);
+  actualizarResumenPlan();
+});
 document.getElementById("festAdd").onclick = anadirFestivo;
 cargarConfigUI();
 window.addEventListener("beforeprint", () => document.getElementById("printTitle").style.display = "block");
