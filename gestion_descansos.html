@@ -126,7 +126,26 @@
     .card { border: 0; padding: 0; }
     td.cell, .sw, .pill, th.fest, th.sun { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
     @page { size: landscape; margin: 10mm; }
+    /* Impresión de la planificación del día: solo se imprime la hoja preparada */
+    body.print-plan > *:not(#printArea) { display: none !important; }
+    body.print-plan #printArea { display: block; page: plan; }
   }
+  @page plan { size: A4 portrait; margin: 12mm; }
+  #printArea { display: none; font-size: 12px; color: #111; }
+  #printArea h1 { font-size: 20px; margin: 0 0 2px; }
+  #printArea .pp-sub { font-size: 13px; color: #444; margin-bottom: 10px; }
+  #printArea .pp-aviso { border: 1px solid #f59e0b; background: #fffbeb; padding: 5px 8px; border-radius: 4px; margin-bottom: 8px; }
+  #printArea .pp-stats { margin: 0 0 10px; font-size: 12px; }
+  #printArea .pp-stats span { display: inline-block; border: 1px solid #bbb; border-radius: 4px; padding: 3px 8px; margin: 0 6px 4px 0; }
+  #printArea h2 { font-size: 14px; margin: 14px 0 6px; border-bottom: 1px solid #999; padding-bottom: 2px; }
+  #printArea table { border-collapse: collapse; width: 100%; }
+  #printArea th, #printArea td { border: 1px solid #999; padding: 5px 7px; text-align: left; vertical-align: top; }
+  #printArea th { background: #eef2f7; font-size: 11px; }
+  #printArea tr { page-break-inside: avoid; }
+  #printArea .pp-vacio { color: #999; }
+  #printArea .pill { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  #printArea th, #printArea .pp-aviso { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  #printArea .pp-pie { margin-top: 14px; font-size: 10px; color: #666; }
 </style>
 </head>
 <body>
@@ -225,6 +244,7 @@
         <label class="fijos"><input type="checkbox" id="planSoloTrabajan" checked> Solo los que trabajan</label>
         <button class="btn" id="planCopiar">Copiar del día anterior</button>
         <button class="btn" id="planVaciar">Vaciar este día</button>
+        <button class="btn primary" id="planPrint">Imprimir planificación</button>
         <button class="btn" id="planCsv">Exportar día (CSV)</button>
         <button class="btn" id="planVerMes">Ver el mes en el cuadrante</button>
       </div>
@@ -316,6 +336,7 @@
   </section>
 </main>
 
+<div id="printArea"></div>
 <div class="toast" id="toast"></div>
 
 <script>
@@ -943,6 +964,64 @@ function exportarPlanCSV() {
     filas.push([planFecha, w.name, tipo ? TIPOS[tipo].nombre : "Día normal", trabaja(tipo) ? "Sí" : "No", p.obra, p.turno, p.notas].map(q).join(";"));
   }
   descargar(`planificacion_${planFecha}.csv`, "﻿" + filas.join("\r\n"), "text/csv;charset=utf-8");
+}
+
+/** Hoja limpia para imprimir la planificación del día seleccionado */
+function htmlImpresionPlan() {
+  const { y, m, d } = planPartes();
+  const dow = infoDia(y, m, d).dow;
+  const f = festivo(y, m, d);
+  const r = datosPlanDia();
+  const NOMBRES = NOMBRES_DIA_LARGO[dow];
+  const trabajan = [], noTrabajan = [];
+  for (const w of state.workers) {
+    const tipo = tipoDia(w, y, m, d);
+    (trabaja(tipo) ? trabajan : noTrabajan).push({ w, tipo, p: planDe(w.id) });
+  }
+  const celda = v => v ? esc(v) : `<span class="pp-vacio">—</span>`;
+  const avisos = [];
+  if (f !== undefined) avisos.push(`Festivo${f ? ": " + esc(f) : ""}`);
+  if (dow === 6) avisos.push("Domingo");
+  if (state.config.minCobertura > 0 && r.trabajan < state.config.minCobertura)
+    avisos.push(`Solo trabajan ${r.trabajan} personas (mínimo ${state.config.minCobertura})`);
+
+  let h = `<h1>Planificación del día</h1>
+    <div class="pp-sub">${NOMBRES.charAt(0).toUpperCase() + NOMBRES.slice(1)}, ${d} de ${MESES[m]} de ${y}</div>`;
+  if (avisos.length) h += `<div class="pp-aviso"><b>Atención:</b> ${avisos.join(" · ")}</div>`;
+  h += `<div class="pp-stats"><span>Trabajan: <b>${r.trabajan}</b></span><span>No trabajan: <b>${r.descansan.length}</b></span>
+    <span>Con asignación: <b>${r.asignados}</b></span><span>Sin asignar: <b>${r.sinAsignar.length}</b></span></div>`;
+
+  const turnos = Object.entries(r.porTurno).map(([t, n]) => `${esc(t)}: ${n}`);
+  const obras = Object.entries(r.porObra).sort((a, b) => b[1] - a[1]).map(([o, n]) => `${esc(o)}: ${n}`);
+  if (turnos.length) h += `<div><b>Por turno:</b> ${turnos.join(" · ")}</div>`;
+  if (obras.length) h += `<div><b>Por obra:</b> ${obras.join(" · ")}</div>`;
+
+  h += `<h2>Trabajan (${trabajan.length})</h2>`;
+  h += trabajan.length
+    ? `<table><thead><tr><th style="width:4%">#</th><th style="width:26%">Trabajador</th><th style="width:28%">Asignación (obra / centro)</th>
+        <th style="width:14%">Turno</th><th>Notas</th></tr></thead><tbody>` +
+      trabajan.map((x, i) => `<tr><td>${i + 1}</td><td><b>${esc(x.w.name)}</b>${x.tipo === "T" ? ` <span class="pp-vacio">(trabaja en su descanso)</span>` : ""}</td>
+        <td>${celda(x.p.obra)}</td><td>${celda(x.p.turno)}</td><td>${celda(x.p.notas)}</td></tr>`).join("") + `</tbody></table>`
+    : `<p class="pp-vacio">Nadie trabaja este día.</p>`;
+
+  if (noTrabajan.length) {
+    h += `<h2>No trabajan (${noTrabajan.length})</h2><table><thead><tr><th style="width:30%">Trabajador</th><th>Motivo</th></tr></thead><tbody>` +
+      noTrabajan.map(x => `<tr><td>${esc(x.w.name)}</td>
+        <td><span class="pill" style="background:${TIPOS[x.tipo].color};${colorTexto(x.tipo)}">${TIPOS[x.tipo].corto}</span> ${esc(TIPOS[x.tipo].nombre)}</td></tr>`).join("") +
+      `</tbody></table>`;
+  }
+  const ahora = new Date();
+  h += `<div class="pp-pie">Impreso el ${pad(ahora.getDate())}/${pad(ahora.getMonth() + 1)}/${ahora.getFullYear()} a las ${pad(ahora.getHours())}:${pad(ahora.getMinutes())}</div>`;
+  return h;
+}
+
+function prepararImpresionPlan() {
+  document.getElementById("printArea").innerHTML = htmlImpresionPlan();
+  document.body.classList.add("print-plan");
+}
+function imprimirPlan() {
+  prepararImpresionPlan();
+  window.print();
 }
 
 function moverPlanDia(delta) {
@@ -1614,6 +1693,13 @@ document.getElementById("planSoloTrabajan").onchange = renderPlan;
 document.getElementById("planCopiar").onclick = copiarPlanAnterior;
 document.getElementById("planVaciar").onclick = vaciarPlanDia;
 document.getElementById("planCsv").onclick = exportarPlanCSV;
+document.getElementById("planPrint").onclick = imprimirPlan;
+// Con Ctrl+P en la pestaña de planificación también se imprime la hoja limpia
+window.addEventListener("beforeprint", () => { if (tabActual === "plan") prepararImpresionPlan(); });
+window.addEventListener("afterprint", () => {
+  document.body.classList.remove("print-plan");
+  document.getElementById("printArea").innerHTML = "";
+});
 document.getElementById("planVerMes").onclick = () => {
   const { y, m } = planPartes();
   vista = { year: y, month: m };
