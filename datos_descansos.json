@@ -1,8 +1,249 @@
 {
-  "workers": [],
-  "marks": {},
+  "workers": [
+    {
+      "id": 4,
+      "name": "Ruben Torres",
+      "offset": 0,
+      "fijos": [
+        5
+      ]
+    },
+    {
+      "id": 5,
+      "name": "JUAN TOMAS JOSE MANUEL",
+      "offset": 0,
+      "fijos": [
+        2
+      ]
+    },
+    {
+      "id": 6,
+      "name": "GARCIA MARTINEZ CARLOS TENESOR",
+      "offset": 3
+    },
+    {
+      "id": 7,
+      "name": "RODRIGUEZ VAQUERO RAMIRO",
+      "offset": 2
+    },
+    {
+      "id": 8,
+      "name": "GOMEZ MARTINEZ JOSE MANUEL",
+      "offset": 4
+    },
+    {
+      "id": 9,
+      "name": "VIDAL SANCHEZ RAUL",
+      "offset": 0
+    },
+    {
+      "id": 10,
+      "name": "CORDOBA MORALES FRANCISCO",
+      "offset": 1
+    },
+    {
+      "id": 11,
+      "name": "LOPEZ CUBERO TERESA",
+      "offset": 2
+    },
+    {
+      "id": 12,
+      "name": "ALONSO PABLOS PILAR",
+      "offset": 1
+    },
+    {
+      "id": 13,
+      "name": "MARTIN EGEA ESTEBAN",
+      "offset": 4
+    },
+    {
+      "id": 14,
+      "name": "NICOLAS MANZANARES JOSE MANUEL",
+      "offset": 3
+    },
+    {
+      "id": 15,
+      "name": "PAMIES FERRANDEZ JOSE",
+      "offset": 0
+    },
+    {
+      "id": 16,
+      "name": "BENEDICTO CAYUELAS FRANCISCO",
+      "offset": 0
+    },
+    {
+      "id": 17,
+      "name": "DIAZ ARENAS JOSE",
+      "offset": 2
+    },
+    {
+      "id": 18,
+      "name": "PAMIES AMOEDO JOSE ANTONIO",
+      "offset": 5
+    },
+    {
+      "id": 19,
+      "name": "PAMIES VICENTE RAMON MANUEL",
+      "offset": 0
+    },
+    {
+      "id": 20,
+      "name": "MANZANARES PATIÑO VICENTE",
+      "offset": 1
+    },
+    {
+      "id": 21,
+      "name": "VIZCAINO RUIZ JOSE",
+      "offset": 1
+    },
+    {
+      "id": 22,
+      "name": "CORCHETE MARTINEZ ANTONIO",
+      "offset": 2
+    },
+    {
+      "id": 23,
+      "name": "ANDREU MARTINEZ JOSE ANGEL",
+      "offset": 5
+    },
+    {
+      "id": 24,
+      "name": "MARTI GONZALEZ JOSE JAVIER",
+      "offset": 4
+    },
+    {
+      "id": 25,
+      "name": "CAYUELAS HERNANDEZ MANUEL",
+      "offset": 0
+    },
+    {
+      "id": 26,
+      "name": "CAYUELAS TORRES ANGEL",
+      "offset": 0
+    },
+    {
+      "id": 27,
+      "name": "JUAN RUIZ JORGE",
+      "offset": 5
+    },
+    {
+      "id": 28,
+      "name": "LOPEZ MILLAN JULIA",
+      "offset": 3,
+      "fijos": [
+        4,
+        5
+      ]
+    }
+  ],
+  "marks": {
+    "26|2026-11-07": "SAN",
+    "26|2026-11-09": "SAN",
+    "26|2026-11-10": "SAN",
+    "26|2026-11-11": "SAN",
+    "26|2026-11-12": "SAN",
+    "26|2026-11-13": "SAN",
+    "26|2026-11-17": "SAN",
+    "26|2026-11-18": "SAN",
+    "26|2026-11-19": "SAN",
+    "26|2026-11-20": "SAN",
+    "26|2026-11-21": "SAN",
+    "26|2026-11-23": "SAN",
+    "26|2026-11-25": "SAN",
+    "26|2026-11-26": "SAN",
+    "26|2026-11-27": "SAN",
+    "26|2026-11-28": "SAN",
+    "26|2026-11-29": "SAN",
+    "26|2026-11-24": "SAN",
+    "26|2026-11-01": "SAN",
+    "26|2026-11-02": "SAN",
+    "26|2026-11-03": "SAN",
+    "26|2026-11-04": "SAN",
+    "26|2026-11-05": "SAN",
+    "26|2026-11-06": "SAN",
+    "26|2026-11-08": "SAN",
+    "26|2026-11-14": "SAN",
+    "26|2026-11-15": "SAN",
+    "26|2026-11-16": "SAN",
+    "26|2026-11-22": "SAN",
+    "5|2026-11-19": "V",
+    "5|2026-11-20": "V",
+    "5|2026-11-21": "V",
+    "5|2026-11-22": "V",
+    "5|2026-11-23": "V",
+    "5|2026-11-24": "V",
+    "5|2026-11-25": "V",
+    "5|2026-11-26": "V",
+    "5|2026-11-27": "V",
+    "5|2026-11-28": "V",
+    "5|2026-11-29": "V",
+    "5|2026-11-30": "V",
+    "5|2026-12-01": "V",
+    "5|2026-12-02": "V",
+    "5|2026-12-03": "V",
+    "5|2026-12-07": "AP",
+    "11|2026-11-19": "V",
+    "11|2026-11-20": "V",
+    "11|2026-11-21": "V",
+    "11|2026-11-22": "V",
+    "11|2026-11-23": "V",
+    "11|2026-11-24": "V",
+    "11|2026-11-25": "V",
+    "11|2026-11-26": "V",
+    "11|2026-11-27": "V",
+    "11|2026-11-28": "V",
+    "11|2026-11-29": "V",
+    "11|2026-11-30": "V",
+    "11|2026-12-01": "V",
+    "11|2026-12-02": "V",
+    "11|2026-12-03": "V",
+    "15|2026-11-01": "BA",
+    "15|2026-11-02": "BA",
+    "15|2026-11-03": "BA",
+    "15|2026-11-04": "BA",
+    "15|2026-11-05": "BA",
+    "15|2026-11-06": "BA",
+    "15|2026-11-07": "BA",
+    "15|2026-11-08": "BA",
+    "15|2026-11-09": "BA",
+    "15|2026-11-10": "BA",
+    "15|2026-11-11": "BA",
+    "15|2026-11-12": "BA",
+    "15|2026-11-13": "BA",
+    "15|2026-11-14": "BA",
+    "15|2026-11-15": "BA",
+    "15|2026-11-16": "BA",
+    "15|2026-11-18": "BA",
+    "15|2026-11-17": "BA",
+    "15|2026-11-19": "BA",
+    "15|2026-11-20": "BA",
+    "15|2026-11-21": "BA",
+    "15|2026-11-22": "BA",
+    "15|2026-11-23": "BA",
+    "15|2026-11-24": "BA",
+    "15|2026-11-25": "BA",
+    "15|2026-11-26": "BA",
+    "15|2026-11-27": "BA",
+    "15|2026-11-28": "BA",
+    "15|2026-11-29": "BA",
+    "15|2026-11-30": "BA",
+    "26|2026-11-30": "SAN",
+    "17|2026-01-18": "T",
+    "17|2026-01-25": "T",
+    "17|2026-01-04": "T",
+    "17|2026-01-11": "T",
+    "17|2026-03-15": "T",
+    "17|2026-03-22": "T",
+    "17|2026-03-29": "T",
+    "17|2026-05-24": "T",
+    "17|2026-05-31": "T",
+    "17|2026-06-14": "T",
+    "17|2026-06-21": "T",
+    "17|2026-07-19": "T"
+  },
   "festivos": {
-    "2026-11-24": "navidad"
+    "2026-11-03": "PATRON BARRENDEROS",
+    "2026-12-08": "LA INMACULADA"
   },
   "plan": {
     "2026-11-20": {
@@ -16,6 +257,88 @@
         "turno": "Tarde",
         "notas": ""
       }
+    },
+    "2026-11-21": {
+      "6": {
+        "obra": "CARTON",
+        "turno": "",
+        "notas": ""
+      },
+      "7": {
+        "obra": "ENSERES 2",
+        "turno": "",
+        "notas": ""
+      },
+      "8": {
+        "obra": "VERTEDERO",
+        "turno": "",
+        "notas": ""
+      },
+      "9": {
+        "obra": "SOPLAR",
+        "turno": "",
+        "notas": ""
+      },
+      "10": {
+        "obra": "BARRIDO MIXTO",
+        "turno": "",
+        "notas": ""
+      },
+      "12": {
+        "obra": "06",
+        "turno": "",
+        "notas": ""
+      },
+      "13": {
+        "obra": "BARRIDO MEC",
+        "turno": "",
+        "notas": ""
+      },
+      "14": {
+        "obra": "CARTON",
+        "turno": "",
+        "notas": ""
+      },
+      "16": {
+        "obra": "ENSERES 1",
+        "turno": "",
+        "notas": ""
+      },
+      "17": {
+        "obra": "BARRIDO MEC",
+        "turno": "",
+        "notas": ""
+      },
+      "19": {
+        "obra": "BARRIDO MEC",
+        "turno": "",
+        "notas": ""
+      },
+      "20": {
+        "obra": "ECO/MOVIL VERTEDERO",
+        "turno": "",
+        "notas": ""
+      },
+      "21": {
+        "obra": "COORDINACION",
+        "turno": "",
+        "notas": ""
+      },
+      "22": {
+        "obra": "04",
+        "turno": "",
+        "notas": ""
+      },
+      "24": {
+        "obra": "ENSERES 1",
+        "turno": "",
+        "notas": ""
+      },
+      "25": {
+        "obra": "ENSERES 2",
+        "turno": "",
+        "notas": ""
+      }
     }
   },
   "config": {
@@ -25,10 +348,8 @@
     "festivoDescanso": true,
     "extraPorDia": 2,
     "turnos": [
-      "Mañana",
-      "Tarde",
-      "Noche"
+      "Tarde"
     ]
   },
-  "nextId": 4
+  "nextId": 29
 }
