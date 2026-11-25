@@ -138,7 +138,10 @@
     {
       "id": 29,
       "name": "RUBEN TORRES",
-      "offset": 5
+      "offset": 5,
+      "fijos": [
+        0
+      ]
     }
   ],
   "marks": {
